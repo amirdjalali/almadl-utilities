@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlmaDL ZIP Cleaner - Rimuove i file di sistema di macOS dagli archivi ZIP</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            border: 3px dashed #f5576c;
+            border-radius: 15px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fff5f7;
+            margin-bottom: 30px;
+        }
+
+        .upload-area:hover {
+            border-color: #f093fb;
+            background: #ffebf0;
+        }
+
+        .upload-area.dragover {
+            border-color: #f093fb;
+            background: #ffe0eb;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #f5576c;
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #555;
+        }
+
+        .info-box li {
+            margin: 5px 0;
+        }
+
+        .file-info {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .file-info h3 {
+            color: #f57c00;
+            margin-bottom: 8px;
+        }
+
+        .file-info p {
+            color: #555;
+            margin: 5px 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #f5576c;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(245, 87, 108, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .progress-text {
+            color: #666;
+            text-align: center;
+        }
+
+        .results {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .results h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .removed-files {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .removed-files h4 {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .removed-item {
+            padding: 8px 10px;
+            background: white;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #555;
+            font-family: 'Courier New', monospace;
+        }
+
+        .download-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+
+        .download-btn:hover {
+            background: #45a049;
+        }
+
+        .reset-btn {
+            background: #999;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+            width: 100%;
+        }
+
+        .reset-btn:hover {
+            background: #777;
+        }
+
+        .error {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error p {
+            color: #c62828;
+            margin: 0;
+        }
+
+        .success-icon {
+            font-size: 3em;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Alma DL ZIP Cleaner</h1>
+        <p class="subtitle">Rimuove i file di sistema MacOS dagli archivi ZIP</p>
+
+        <div class="info-box">
+            <h3>Cosa verrà rimosso:</h3>
+            <ul>
+                <li>cartelle <code>__MACOSX/</code> e il loro contenuto</li>
+                <li>file <code>.DS_Store</code> (metadati cartelle MacOS)</li>
+                <li>file <code>._.filename</code> (AppleDouble resource forks)</li>
+                <li>file <code>.localized</code></li>
+                <li>file <code>Thumbs.db</code> (miniature Windows)</li>
+            </ul>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📦</div>
+            <div class="upload-text">Clicca per caricare or trascina il file qui</div>
+            <div class="upload-subtext">Solo file ZIP</div>
+            <input type="file" id="fileInput" accept=".zip" multiple>
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <h3>📋 Informazioni dei file</h3>
+            <p><strong>File selezionati:</strong> <span id="fileCount"></span></p>
+            <p id="fileNames"></p>
+        </div>
+
+        <div class="error" id="error">
+            <p id="errorMessage"></p>
+        </div>
+
+        <button class="button" id="cleanBtn" disabled>Pulisci il file ZIP</button>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            <div class="progress-text" id="progressText">Elaborazione in corso...</div>
+        </div>
+
+        <div class="results" id="results">
+            <div class="success-icon">✨</div>
+            <h3>Pulizia completata!</h3>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalRemoved">0</div>
+                    <div class="stat-label">File rimossi</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="spaceSaved">0 KB</div>
+                    <div class="stat-label">Spazio disco recuperato</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="filesKept">0</div>
+                    <div class="stat-label">File mantenuti</div>
+                </div>
+            </div>
+
+            <div class="removed-files" id="removedFiles">
+                <h4>File rimossi:</h4>
+                <div id="removedList"></div>
+            </div>
+
+            <button class="download-btn" id="downloadBtn">Scarica lo ZIP pulito</button>
+            <button class="reset-btn" id="resetBtn">Pulisci un altro ZIP</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+        let cleanedZip = null;
+        let cleanedFileName = '';
+        let removedFilesList = [];
+        let stats = {
+            removed: 0,
+            spaceSaved: 0,
+            kept: 0
+        };
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const cleanBtn = document.getElementById('cleanBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const results = document.getElementById('results');
+        const errorDiv = document.getElementById('error');
+        const errorMessage = document.getElementById('errorMessage');
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // Patterns to remove
+        const shouldRemove = (filename) => {
+            const patterns = [
+                /^__MACOSX\//i,           // __MACOSX folders
+                /\/\.DS_Store$/i,         // .DS_Store files
+                /^\.DS_Store$/i,          // .DS_Store in root
+                /\/\._[^\/]+$/,           // ._filename (resource forks)
+                /^\.localized$/i,         // .localized files
+                /\/\.localized$/i,        // .localized files in subdirs
+                /\/Thumbs\.db$/i,         // Windows thumbnails
+                /^Thumbs\.db$/i,          // Windows thumbnails in root
+            ];
+
+            return patterns.some(pattern => pattern.test(filename));
+        };
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.zip'));
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFiles(Array.from(e.target.files));
+            }
+        });
+
+        // Handle file selection
+        function handleFiles(files) {
+            selectedFiles = files;
+            hideError();
+
+            const fileNames = files.map(f => f.name).join(', ');
+            document.getElementById('fileCount').textContent = files.length;
+            document.getElementById('fileNames').innerHTML = `<strong>Files:</strong> ${fileNames}`;
+
+            fileInfo.style.display = 'block';
+            cleanBtn.disabled = false;
+        }
+
+        // Clean button
+        cleanBtn.addEventListener('click', async () => {
+            if (selectedFiles.length === 0) return;
+
+            hideError();
+            cleanBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            results.style.display = 'none';
+
+            try {
+                if (selectedFiles.length === 1) {
+                    await cleanSingleZip(selectedFiles[0]);
+                } else {
+                    await cleanMultipleZips(selectedFiles);
+                }
+                displayResults();
+            } catch (error) {
+                showError('Errore nella pulizia del file ZIP: ' + error.message);
+            } finally {
+                cleanBtn.disabled = false;
+                progressContainer.style.display = 'none';
+            }
+        });
+
+        // Clean a single ZIP file
+        async function cleanSingleZip(file) {
+            updateProgress(0, 'Caricamento del file ZIP...');
+
+            const zip = await JSZip.loadAsync(file);
+            const newZip = new JSZip();
+            
+            removedFilesList = [];
+            stats = { removed: 0, spaceSaved: 0, kept: 0 };
+
+            const fileNames = Object.keys(zip.files);
+            let processed = 0;
+
+            for (const filename of fileNames) {
+                const fileData = zip.files[filename];
+                
+                if (shouldRemove(filename)) {
+                    removedFilesList.push(filename);
+                    stats.removed++;
+                    
+                    // Get file size for space saved calculation
+                    if (!fileData.dir) {
+                        const content = await fileData.async('uint8array');
+                        stats.spaceSaved += content.length;
+                    }
+                } else {
+                    // Keep this file
+                    stats.kept++;
+                    
+                    if (fileData.dir) {
+                        newZip.folder(filename);
+                    } else {
+                        const content = await fileData.async('uint8array');
+                        newZip.file(filename, content);
+                    }
+                }
+
+                processed++;
+                updateProgress((processed / fileNames.length) * 100, `Elaborazione file... ${processed}/${fileNames.length}`);
+            }
+
+            updateProgress(100, 'Generating cleaned ZIP...');
+            cleanedZip = await newZip.generateAsync({ type: 'blob' });
+            cleanedFileName = file.name.replace('.zip', '_cleaned.zip');
+        }
+
+        // Clean multiple ZIP files
+        async function cleanMultipleZips(files) {
+            const combinedZip = new JSZip();
+            removedFilesList = [];
+            stats = { removed: 0, spaceSaved: 0, kept: 0 };
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                updateProgress((i / files.length) * 50, `Processing ${file.name}...`);
+
+                const zip = await JSZip.loadAsync(file);
+                const folderName = file.name.replace('.zip', '');
+
+                for (const filename of Object.keys(zip.files)) {
+                    const fileData = zip.files[filename];
+                    const newPath = `${folderName}/${filename}`;
+
+                    if (shouldRemove(filename)) {
+                        removedFilesList.push(newPath);
+                        stats.removed++;
+                        
+                        if (!fileData.dir) {
+                            const content = await fileData.async('uint8array');
+                            stats.spaceSaved += content.length;
+                        }
+                    } else {
+                        stats.kept++;
+                        
+                        if (fileData.dir) {
+                            combinedZip.folder(newPath);
+                        } else {
+                            const content = await fileData.async('uint8array');
+                            combinedZip.file(newPath, content);
+                        }
+                    }
+                }
+            }
+
+            updateProgress(75, 'Generazione dell\'archivio ZIP...');
+            cleanedZip = await combinedZip.generateAsync({ type: 'blob' });
+            cleanedFileName = 'cleaned_archives.zip';
+            updateProgress(100, 'Completato!');
+        }
+
+        // Display results
+        function displayResults() {
+            document.getElementById('totalRemoved').textContent = stats.removed;
+            document.getElementById('spaceSaved').textContent = formatBytes(stats.spaceSaved);
+            document.getElementById('filesKept').textContent = stats.kept;
+
+            const removedList = document.getElementById('removedList');
+            removedList.innerHTML = '';
+
+            if (removedFilesList.length === 0) {
+                removedList.innerHTML = '<div class="removed-item">Non sono stati trovati file di sistema! ✨</div>';
+            } else {
+                removedFilesList.slice(0, 50).forEach(filename => {
+                    const item = document.createElement('div');
+                    item.className = 'removed-item';
+                    item.textContent = filename;
+                    removedList.appendChild(item);
+                });
+
+                if (removedFilesList.length > 50) {
+                    const more = document.createElement('div');
+                    more.className = 'removed-item';
+                    more.style.fontStyle = 'italic';
+                    more.textContent = `... and ${removedFilesList.length - 50} more`;
+                    removedList.appendChild(more);
+                }
+            }
+
+            results.style.display = 'block';
+        }
+
+        // Download button
+        downloadBtn.addEventListener('click', () => {
+            const url = URL.createObjectURL(cleanedZip);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = cleanedFileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Reset button
+        resetBtn.addEventListener('click', () => {
+            selectedFiles = [];
+            cleanedZip = null;
+            cleanedFileName = '';
+            removedFilesList = [];
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            results.style.display = 'none';
+            cleanBtn.disabled = true;
+            hideError();
+        });
+
+        // Update progress
+        function updateProgress(percent, text) {
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = Math.round(percent) + '%';
+            progressText.textContent = text;
+        }
+
+        // Format bytes
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Error handling
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            errorDiv.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

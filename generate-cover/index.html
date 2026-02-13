@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cover Generator - Academic Document Frontispiece</title>
+    <script src="https://unpkg.com/docx@9.5.1/dist/index.umd.cjs"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .form-panel {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+        }
+
+        .preview-panel {
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f0f2ff;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #e8ebff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #dce0ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #667eea;
+            font-size: 1em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .author-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .author-item h4 {
+            color: #555;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .remove-btn:hover {
+            background: #d32f2f;
+        }
+
+        .add-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            width: 100%;
+        }
+
+        .add-btn:hover {
+            background: #45a049;
+        }
+
+        .metadata-loaded {
+            display: none;
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .metadata-loaded h3 {
+            color: #2e7d32;
+            margin-bottom: 5px;
+            font-size: 1em;
+        }
+
+        .preview-cover {
+            background: white;
+            aspect-ratio: 8.5/11;
+            border: 1px solid #ddd;
+            padding: 60px 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .preview-title {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 40px;
+            line-height: 1.3;
+        }
+
+        .preview-authors {
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .preview-type {
+            font-size: 0.95em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .preview-footer {
+            position: absolute;
+            bottom: 40px;
+            left: 50px;
+            right: 50px;
+            text-align: center;
+        }
+
+        .preview-year {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .preview-doi {
+            font-size: 0.9em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .preview-license {
+            font-size: 0.85em;
+            color: #888;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .button {
+            flex: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .button.secondary {
+            background: #999;
+        }
+
+        .button.secondary:hover {
+            background: #777;
+        }
+
+        .error {
+            display: none;
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .error p {
+            color: #c62828;
+            margin: 0;
+        }
+
+        .success {
+            display: none;
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .success h3 {
+            color: #2e7d32;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 1024px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 Cover Generator</h1>
+        <p class="subtitle">Crea un frontespizio per il tuo documento</p>
+
+        <div class="layout">
+            <!-- Form Panel -->
+            <div class="form-panel">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">Carica i tuoi metadati in formato JSON</div>
+                    <div class="upload-subtext">Clicca o trascina qui il file .json o .js</div>
+                    <input type="file" id="fileInput" accept=".json, .js">
+                </div>
+
+                <div class="metadata-loaded" id="metadataLoaded">
+                    <h3>✓ Metadata loaded from JSON</h3>
+                </div>
+
+                <div class="error" id="error">
+                    <p id="errorMessage"></p>
+                </div>
+
+                <div class="form-group">
+                    <label>Document Type</label>
+                    <select id="docType">
+                        <option value="preprint">Preprint</option>
+                        <option value="article">Article</option>
+                        <option value="book">Book</option>
+                        <option value="thesis">Thesis</option>
+                        <option value="report">Report</option>
+                        <option value="dataset">Dataset</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Title</label>
+                    <textarea id="title" placeholder="Document title"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Authors</label>
+                    <div id="authorsList"></div>
+                    <button class="add-btn" onclick="addAuthor()">+ Add Author</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Editors (optional)</label>
+                    <input type="text" id="editors" placeholder="Editor names, separated by commas">
+                </div>
+
+                <div class="form-group">
+                    <label>Year/Date</label>
+                    <input type="text" id="year" placeholder="e.g., 2025 or 2025-10">
+                </div>
+
+                <div class="form-group">
+                    <label>EPrint ID</label>
+                    <input type="number" id="eprintid" placeholder="e.g., 8622">
+                </div>
+
+                <div class="form-group">
+                    <label>License</label>
+                    <select id="license">
+                        <option value="cc_by_4">CC BY 4.0</option>
+                        <option value="cc_by_sa_4">CC BY-SA 4.0</option>
+                        <option value="cc_by_nc_4">CC BY-NC 4.0</option>
+                        <option value="cc_by_nd_4">CC BY-ND 4.0</option>
+                        <option value="cc0">CC0 1.0</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="button-container">
+                    <button class="button secondary" onclick="resetForm()">Reset</button>
+                    <button class="button" onclick="updatePreview()">Update Preview</button>
+                </div>
+            </div>
+
+            <!-- Preview Panel -->
+            <div class="preview-panel">
+                <h3 style="margin-bottom: 20px; color: #333;">Preview</h3>
+                <div class="preview-cover" id="preview">
+                    <div class="preview-type" id="previewType">PREPRINT</div>
+                    <div class="preview-title" id="previewTitle">Document Title</div>
+                    <div class="preview-authors" id="previewAuthors">Author Names</div>
+                    <div class="preview-footer">
+                        <div class="preview-year" id="previewYear">2025</div>
+                        <div class="preview-doi" id="previewDoi">DOI: 10.6092/unibo/amsacta/XXXX</div>
+                        <div class="preview-license" id="previewLicense">This work is licensed under CC BY 4.0</div>
+                    </div>
+                </div>
+
+                <div class="button-container">
+                    <button class="button" onclick="generateDOCX()">Download DOCX</button>
+                    <button class="button" onclick="generatePDF()">Download PDF</button>
+                </div>
+
+                <div class="success" id="success">
+                    <h3>✓ Cover generated successfully!</h3>
+                    <p>Your file has been downloaded</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authorCount = 0;
+        let metadata = null;
+
+        // Upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        async function handleFile(file) {
+            if (!file.name.endsWith('.json') && !file.name.endsWith('.js')) {
+                showError('Please upload a JSON file');
+                return;
+            }
+
+            try {
+                const text = await file.text();
+                metadata = JSON.parse(text);
+                populateFromMetadata();
+                document.getElementById('metadataLoaded').style.display = 'block';
+                hideError();
+            } catch (error) {
+                showError('Error reading file: ' + error.message);
+            }
+        }
+
+        function populateFromMetadata() {
+            // Type
+            if (metadata.type) {
+                document.getElementById('docType').value = metadata.type;
+            }
+
+            // Title
+            if (metadata.title) {
+                document.getElementById('title').value = metadata.title;
+            }
+
+            // Authors
+            if (metadata.creators && metadata.creators.length > 0) {
+                document.getElementById('authorsList').innerHTML = '';
+                authorCount = 0;
+                metadata.creators.forEach(creator => {
+                    addAuthor();
+                    const name = `${creator.name.given} ${creator.name.family}`;
+                    document.getElementById(`author-${authorCount}`).value = name;
+                });
+            }
+
+            // Year/Date
+            if (metadata.date) {
+                document.getElementById('year').value = metadata.date;
+            }
+
+            // EPrint ID
+            if (metadata.eprintid) {
+                document.getElementById('eprintid').value = metadata.eprintid;
+            }
+
+            // License
+            if (metadata.documents && metadata.documents[0] && metadata.documents[0].license) {
+                document.getElementById('license').value = metadata.documents[0].license;
+            }
+
+            updatePreview();
+        }
+
+        function addAuthor() {
+            authorCount++;
+            const container = document.getElementById('authorsList');
+            
+            const item = document.createElement('div');
+            item.className = 'author-item';
+            item.id = `author-container-${authorCount}`;
+            item.innerHTML = `
+                <button class="remove-btn" onclick="removeAuthor(${authorCount})">Remove</button>
+                <h4>Author ${authorCount}</h4>
+                <input type="text" id="author-${authorCount}" placeholder="Full name">
+            `;
+            
+            container.appendChild(item);
+        }
+
+        function removeAuthor(id) {
+            const element = document.getElementById(`author-container-${id}`);
+            if (element) {
+                element.remove();
+            }
+        }
+
+        function updatePreview() {
+            const docType = document.getElementById('docType').value;
+            const title = document.getElementById('title').value;
+            const year = document.getElementById('year').value;
+            const eprintid = document.getElementById('eprintid').value;
+            const license = document.getElementById('license').value;
+
+            // Get authors
+            const authors = [];
+            for (let i = 1; i <= authorCount; i++) {
+                const authorEl = document.getElementById(`author-${i}`);
+                if (authorEl && authorEl.value) {
+                    authors.push(authorEl.value);
+                }
+            }
+
+            // Update type
+            let typeText = docType.toUpperCase();
+            if (docType === 'preprint') {
+                typeText = 'PREPRINT';
+            }
+            document.getElementById('previewType').textContent = typeText;
+
+            // Update title
+            document.getElementById('previewTitle').textContent = title || 'Document Title';
+
+            // Update authors
+            document.getElementById('previewAuthors').textContent = authors.join('\n') || 'Author Names';
+
+            // Update year
+            let yearText = year || '2025';
+            if (yearText.includes('-')) {
+                yearText = yearText.split('-')[0];
+            }
+            document.getElementById('previewYear').textContent = yearText;
+
+            // Update DOI
+            const doi = eprintid ? `DOI: 10.6092/unibo/amsacta/${eprintid}` : 'DOI: 10.6092/unibo/amsacta/XXXX';
+            document.getElementById('previewDoi').textContent = doi;
+
+            // Update license
+            const licenseText = getLicenseText(license);
+            document.getElementById('previewLicense').textContent = licenseText;
+        }
+
+        function getLicenseText(licenseCode) {
+            const licenses = {
+                'cc_by_4': 'This work is licensed under CC BY 4.0',
+                'cc_by_sa_4': 'This work is licensed under CC BY-SA 4.0',
+                'cc_by_nc_4': 'This work is licensed under CC BY-NC 4.0',
+                'cc_by_nd_4': 'This work is licensed under CC BY-ND 4.0',
+                'cc0': 'This work is dedicated to the public domain (CC0 1.0)',
+                'other': 'All rights reserved'
+            };
+            return licenses[licenseCode] || 'All rights reserved';
+        }
+
+        async function generateDOCX() {
+            const { Document, Packer, Paragraph, TextRun, AlignmentType } = docx;
+
+            const docType = document.getElementById('docType').value;
+            const title = document.getElementById('title').value;
+            const year = document.getElementById('year').value;
+            const eprintid = document.getElementById('eprintid').value;
+            const license = document.getElementById('license').value;
+
+            // Get authors
+            const authors = [];
+            for (let i = 1; i <= authorCount; i++) {
+                const authorEl = document.getElementById(`author-${i}`);
+                if (authorEl && authorEl.value) {
+                    authors.push(authorEl.value);
+                }
+            }
+
+            let yearText = year || '2025';
+            if (yearText.includes('-')) {
+                yearText = yearText.split('-')[0];
+            }
+
+            const doi = eprintid ? `DOI: 10.6092/unibo/amsacta/${eprintid}` : '';
+            const licenseText = getLicenseText(license);
+
+            const content = [];
+
+            // Add vertical spacing
+            for (let i = 0; i < 8; i++) {
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // Document type (if preprint)
+            if (docType === 'preprint') {
+                content.push(new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ 
+                        text: "PREPRINT", 
+                        size: 24,
+                        bold: true,
+                        allCaps: true
+                    })]
+                }));
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // Title
+            content.push(new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ 
+                    text: title || "Document Title", 
+                    size: 36,
+                    bold: true
+                })]
+            }));
+
+            // Spacing
+            for (let i = 0; i < 4; i++) {
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // Authors
+            authors.forEach(author => {
+                content.push(new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ 
+                        text: author, 
+                        size: 26
+                    })]
+                }));
+            });
+
+            // Spacing to push footer down
+            for (let i = 0; i < 10; i++) {
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // Year
+            content.push(new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ 
+                    text: yearText, 
+                    size: 28,
+                    bold: true
+                })]
+            }));
+
+            content.push(new Paragraph({ children: [new TextRun("")] }));
+
+            // DOI
+            if (doi) {
+                content.push(new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ 
+                        text: doi, 
+                        size: 22,
+                        color: "667eea"
+                    })]
+                }));
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // License
+            content.push(new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ 
+                    text: licenseText, 
+                    size: 20,
+                    italics: true
+                })]
+            }));
+
+            const doc = new Document({
+                sections: [{
+                    properties: {
+                        page: {
+                            size: {
+                                width: 12240,
+                                height: 15840
+                            },
+                            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
+                        }
+                    },
+                    children: content
+                }]
+            });
+
+            const blob = await Packer.toBlob(doc);
+            const filename = `cover_${eprintid || 'document'}.docx`;
+            saveAs(blob, filename);
+
+            showSuccess();
+        }
+
+        async function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const docType = document.getElementById('docType').value;
+            const title = document.getElementById('title').value;
+            const year = document.getElementById('year').value;
+            const eprintid = document.getElementById('eprintid').value;
+            const license = document.getElementById('license').value;
+
+            // Get authors
+            const authors = [];
+            for (let i = 1; i <= authorCount; i++) {
+                const authorEl = document.getElementById(`author-${i}`);
+                if (authorEl && authorEl.value) {
+                    authors.push(authorEl.value);
+                }
+            }
+
+            let yearText = year || '2025';
+            if (yearText.includes('-')) {
+                yearText = yearText.split('-')[0];
+            }
+
+            const doi = eprintid ? `DOI: 10.6092/unibo/amsacta/${eprintid}` : '';
+            const licenseText = getLicenseText(license);
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            let yPos = 80;
+
+            // Document type (if preprint)
+            if (docType === 'preprint') {
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.text('PREPRINT', pageWidth / 2, yPos, { align: 'center' });
+                yPos += 30;
+            }
+
+            // Title
+            doc.setFontSize(24);
+            doc.setFont(undefined, 'bold');
+            const titleLines = doc.splitTextToSize(title || 'Document Title', pageWidth - 40);
+            doc.text(titleLines, pageWidth / 2, yPos, { align: 'center' });
+            yPos += titleLines.length * 12 + 20;
+
+            // Authors
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'normal');
+            authors.forEach(author => {
+                doc.text(author, pageWidth / 2, yPos, { align: 'center' });
+                yPos += 10;
+            });
+
+            // Footer section
+            yPos = pageHeight - 60;
+
+            // Year
+            doc.setFontSize(18);
+            doc.setFont(undefined, 'bold');
+            doc.text(yearText, pageWidth / 2, yPos, { align: 'center' });
+            yPos += 12;
+
+            // DOI
+            if (doi) {
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(102, 126, 234);
+                doc.text(doi, pageWidth / 2, yPos, { align: 'center' });
+                doc.setTextColor(0, 0, 0);
+                yPos += 10;
+            }
+
+            // License
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'italic');
+            doc.text(licenseText, pageWidth / 2, yPos, { align: 'center' });
+
+            const filename = `cover_${eprintid || 'document'}.pdf`;
+            doc.save(filename);
+
+            showSuccess();
+        }
+
+        function resetForm() {
+            if (confirm('Are you sure you want to reset the form?')) {
+                document.getElementById('title').value = '';
+                document.getElementById('editors').value = '';
+                document.getElementById('year').value = '';
+                document.getElementById('eprintid').value = '';
+                document.getElementById('docType').value = 'preprint';
+                document.getElementById('license').value = 'cc_by_4';
+                document.getElementById('authorsList').innerHTML = '';
+                document.getElementById('metadataLoaded').style.display = 'none';
+                authorCount = 0;
+                metadata = null;
+                fileInput.value = '';
+                updatePreview();
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+
+        function showSuccess() {
+            const success = document.getElementById('success');
+            success.style.display = 'block';
+            setTimeout(() => {
+                success.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize with one author
+        addAuthor();
+        updatePreview();
+    </script>
+</body>
+</html>

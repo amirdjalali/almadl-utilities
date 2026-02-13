@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Splitter - Split Large PDFs</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+            margin-bottom: 30px;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #667eea;
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .settings {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .setting-group {
+            margin-bottom: 15px;
+        }
+
+        .setting-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .file-info {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .file-info h3 {
+            color: #2e7d32;
+            margin-bottom: 8px;
+        }
+
+        .file-info p {
+            color: #555;
+            margin: 5px 0;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-container {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .progress-text {
+            color: #666;
+            text-align: center;
+        }
+
+        .results {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-info {
+            flex: 1;
+        }
+
+        .result-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .result-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .download-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #5568d3;
+        }
+
+        .download-all-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 10px;
+            font-size: 1em;
+        }
+
+        .download-all-btn:hover {
+            background: #45a049;
+        }
+
+        .error {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .error p {
+            color: #c62828;
+            margin: 0;
+        }
+
+        .reset-btn {
+            background: #999;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .reset-btn:hover {
+            background: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 AlmaDL PDF Splitter</h1>
+        <p class="subtitle">Suddividi i PDF di grandi dimensioni in PDF più piccoli</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Clicca per caricare i file o trascinali qui</div>
+            <div class="upload-subtext">Solo file PDF</div>
+            <input type="file" id="fileInput" accept=".pdf">
+        </div>
+
+        <div class="settings">
+            <div class="setting-group">
+                <label for="maxSize">Massima dimensione degli spezzoni (MB):</label>
+                <input type="number" id="maxSize" value="20" min="1" max="100" step="1">
+            </div>
+        </div>
+
+        <div class="file-info" id="fileInfo">
+            <h3>📋 Informazioni sul file</h3>
+            <p><strong>Nome:</strong> <span id="fileName"></span></p>
+            <p><strong>Dimensione:</strong> <span id="fileSize"></span></p>
+            <p><strong>Pagine:</strong> <span id="pageCount"></span></p>
+        </div>
+
+        <div class="error" id="error">
+            <p id="errorMessage"></p>
+        </div>
+
+        <button class="button" id="splitBtn" disabled>Suddividi PDF</button>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+            <div class="progress-text" id="progressText">Processing...</div>
+        </div>
+
+        <div class="results" id="results">
+            <h3 style="margin-bottom: 15px; color: #333;">✅ Split Completato!</h3>
+            <div id="resultsList"></div>
+            <button class="download-all-btn" id="downloadAllBtn">Scarica tutti i file (ZIP)</button>
+            <button class="reset-btn" id="resetBtn" style="width: 100%; margin-top: 10px;">Suddividi un altro PDF</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        const { PDFDocument } = PDFLib;
+
+        let currentFile = null;
+        let pdfDoc = null;
+        let splitFiles = [];
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const splitBtn = document.getElementById('splitBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const results = document.getElementById('results');
+        const resultsList = document.getElementById('resultsList');
+        const errorDiv = document.getElementById('error');
+        const errorMessage = document.getElementById('errorMessage');
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Handle file selection
+        async function handleFile(file) {
+            if (file.type !== 'application/pdf') {
+                showError('Please select a PDF file');
+                return;
+            }
+
+            currentFile = file;
+            hideError();
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                pdfDoc = await PDFDocument.load(arrayBuffer);
+
+                const pageCount = pdfDoc.getPageCount();
+                const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileSize').textContent = `${sizeInMB} MB`;
+                document.getElementById('pageCount').textContent = pageCount;
+
+                fileInfo.style.display = 'block';
+                splitBtn.disabled = false;
+            } catch (error) {
+                showError('Error loading PDF: ' + error.message);
+            }
+        }
+
+        // Split PDF button
+        splitBtn.addEventListener('click', async () => {
+            if (!pdfDoc || !currentFile) return;
+
+            const maxSizeMB = parseFloat(document.getElementById('maxSize').value);
+            const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+            hideError();
+            splitBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            results.style.display = 'none';
+
+            try {
+                splitFiles = await splitPDF(pdfDoc, currentFile.name, maxSizeBytes);
+                displayResults();
+            } catch (error) {
+                showError('Error splitting PDF: ' + error.message);
+            } finally {
+                splitBtn.disabled = false;
+                progressContainer.style.display = 'none';
+            }
+        });
+
+        // Split PDF function
+        async function splitPDF(pdfDoc, fileName, maxSizeBytes) {
+            const totalPages = pdfDoc.getPageCount();
+            const baseName = fileName.replace('.pdf', '');
+            const chunks = [];
+
+            updateProgress(0, 'Analyzing PDF...');
+
+            // First, estimate average page size
+            const testDoc = await PDFDocument.create();
+            const [firstPage] = await testDoc.copyPages(pdfDoc, [0]);
+            testDoc.addPage(firstPage);
+            const testBytes = await testDoc.save();
+            const avgPageSize = testBytes.length * 1.2; // Add 20% overhead
+
+            let estimatedPagesPerChunk = Math.max(1, Math.floor(maxSizeBytes * 0.9 / avgPageSize));
+
+            let currentPage = 0;
+            let chunkNum = 1;
+
+            while (currentPage < totalPages) {
+                updateProgress(
+                    (currentPage / totalPages) * 100,
+                    `Creating chunk ${chunkNum}...`
+                );
+
+                let pagesInChunk = 0;
+                let chunkDoc = await PDFDocument.create();
+                let chunkBytes = null;
+
+                // Add pages until we hit the size limit or run out of pages
+                for (let i = 0; i < estimatedPagesPerChunk && currentPage < totalPages; i++) {
+                    const [page] = await chunkDoc.copyPages(pdfDoc, [currentPage]);
+                    chunkDoc.addPage(page);
+                    pagesInChunk++;
+
+                    // Check size periodically
+                    if ((i + 1) % 10 === 0 || i === estimatedPagesPerChunk - 1) {
+                        chunkBytes = await chunkDoc.save();
+                        if (chunkBytes.length > maxSizeBytes && pagesInChunk > 1) {
+                            // Remove last page and break
+                            chunkDoc = await PDFDocument.create();
+                            for (let j = 0; j < pagesInChunk - 1; j++) {
+                                const [p] = await chunkDoc.copyPages(pdfDoc, [currentPage - pagesInChunk + 1 + j]);
+                                chunkDoc.addPage(p);
+                            }
+                            currentPage--;
+                            pagesInChunk--;
+                            chunkBytes = await chunkDoc.save();
+                            break;
+                        }
+                    }
+
+                    currentPage++;
+                }
+
+                if (!chunkBytes) {
+                    chunkBytes = await chunkDoc.save();
+                }
+
+                const chunkName = totalPages > estimatedPagesPerChunk 
+                    ? `${baseName}_part${chunkNum}.pdf`
+                    : baseName + '.pdf';
+
+                chunks.push({
+                    name: chunkName,
+                    bytes: chunkBytes,
+                    pages: pagesInChunk,
+                    size: (chunkBytes.length / (1024 * 1024)).toFixed(2)
+                });
+
+                chunkNum++;
+            }
+
+            updateProgress(100, 'Complete!');
+            return chunks;
+        }
+
+        // Display results
+        function displayResults() {
+            resultsList.innerHTML = '';
+
+            splitFiles.forEach((chunk, index) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                resultItem.innerHTML = `
+                    <div class="result-info">
+                        <div class="result-name">${chunk.name}</div>
+                        <div class="result-size">${chunk.size} MB • ${chunk.pages} page${chunk.pages > 1 ? 's' : ''}</div>
+                    </div>
+                    <button class="download-btn" onclick="downloadFile(${index})">Download</button>
+                `;
+                resultsList.appendChild(resultItem);
+            });
+
+            results.style.display = 'block';
+        }
+
+        // Download single file
+        window.downloadFile = function(index) {
+            const chunk = splitFiles[index];
+            const blob = new Blob([chunk.bytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = chunk.name;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        // Download all as ZIP
+        downloadAllBtn.addEventListener('click', async () => {
+            const zip = new JSZip();
+
+            splitFiles.forEach(chunk => {
+                zip.file(chunk.name, chunk.bytes);
+            });
+
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFile.name.replace('.pdf', '_split.zip');
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Reset
+        resetBtn.addEventListener('click', () => {
+            currentFile = null;
+            pdfDoc = null;
+            splitFiles = [];
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            results.style.display = 'none';
+            splitBtn.disabled = true;
+            hideError();
+        });
+
+        // Update progress
+        function updateProgress(percent, text) {
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = Math.round(percent) + '%';
+            progressText.textContent = text;
+        }
+
+        // Error handling
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            errorDiv.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

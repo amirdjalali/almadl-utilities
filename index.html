@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlmaDL Utilities - Strumenti per la gestione di file</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            color: white;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .subtitle {
+            font-size: 1.3em;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .tool-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+        }
+
+        .tool-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .tool-card.pdf-splitter {
+            --gradient-start: #667eea;
+            --gradient-end: #764ba2;
+        }
+
+        .tool-card.zip-cleaner {
+            --gradient-start: #f093fb;
+            --gradient-end: #f5576c;
+        }
+
+        .tool-card.filename-cleaner {
+            --gradient-start: #4facfe;
+            --gradient-end: #00f2fe;
+        }
+
+        .tool-card.readme-generator {
+            --gradient-start: #a8edea;
+            --gradient-end: #fed6e3;
+        }
+
+        .tool-card.cover-generator {
+            --gradient-start: #667eea;
+            --gradient-end: #764ba2;
+        }
+
+        .tool-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .tool-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .tool-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-size: 1.05em;
+        }
+
+        .tool-features {
+            list-style: none;
+            margin-bottom: 25px;
+        }
+
+        .tool-features li {
+            color: #555;
+            margin: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            font-size: 0.95em;
+        }
+
+        .tool-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .tool-button {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .tool-card:hover .tool-button {
+            transform: scale(1.05);
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 60px;
+            opacity: 0.9;
+        }
+
+        footer p {
+            margin: 5px 0;
+        }
+
+        .features-banner {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .features-banner h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .features-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            color: #555;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-item::before {
+            content: '🎯';
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .subtitle {
+                font-size: 1.1em;
+            }
+
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tool-title {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛠️ AlmaDL Utilities</h1>
+            <p class="subtitle">Strumenti per la gestione di file all'interno dei workflow dei servizi AlmaDL</p>
+        </header>
+
+        <div class="features-banner">
+            <h2>Perché usare questi strumenti?</h2>
+            <div class="features-list">
+                <div class="feature-item">Gli script funzionano al 100% sul tuo browser</div>
+                <div class="feature-item">I tuoi file rimangono privati sul tuo PC</div>
+                <div class="feature-item">Non necessitano di installazione</div>
+                <div class="feature-item">Funzionano offline una volta caricati</div>
+                <div class="feature-item">Utilizzo libero, codice aperto</div>
+                <div class="feature-item">Interfaccia moderna e intuitivia</div>
+            </div>
+        </div>
+
+        <div class="tools-grid">
+            <!-- PDF Splitter -->
+            <a href="/split-pdf" class="tool-card pdf-splitter">
+                <span class="tool-icon">📄</span>
+                <h2 class="tool-title">AlmaDL PDF Splitter</h2>
+                <p class="tool-description">Suddividi PDF di grandi dimensioni.</p>
+                <ul class="tool-features">
+                    <li>Seleziona la dimensione massima dei file (default 20MB)</li>
+                    <li>Distribuzione automatica delle pagine</li>
+                    <li>Download dei singoli file o massivo</li>
+                    <li>Mantiene tutto il contenuto dei PDF</li>
+                </ul>
+                <span class="tool-button">Apri AlmaDL PDF Splitter →</span>
+            </a>
+
+            <!-- ZIP Cleaner -->
+            <a href="/clean-zip" class="tool-card zip-cleaner">
+                <span class="tool-icon">🧹</span>
+                <h2 class="tool-title">AlmaDL ZIP Cleaner</h2>
+                <p class="tool-description">Rimuove i file e le cartelle di sistema macOS dagli archivi ZIP.</p>
+                <ul class="tool-features">
+                    <li>Rimuove le cartelle __MACOSX</li>
+                    <li>Rimuove i file .DS_Store</li>
+                    <li>Pulisce i file resource fork</li>
+                    <li>Mostra lo spazio disco guadagnato</li>
+                </ul>
+                <span class="tool-button">Apri AlmaDL ZIP Cleaner →</span>
+            </a>
+
+            <!-- Filename Cleaner -->
+            <a href="/clean-filenames" class="tool-card filename-cleaner">
+                <span class="tool-icon">🔧</span>
+                <h2 class="tool-title">AlmaDL Filename Cleaner</h2>
+                <p class="tool-description">Pulisce e standardizza i nomi file nelle cartelle ZIP.</p>
+                <ul class="tool-features">
+                    <li>Spazi → underscore</li>
+                    <li>Punti → trattini (ad eccezione delle estensioni)</li>
+                    <li>Gestisce possibili duplicati</li>
+                    <li>Rimuove i caratteri speciali</li>
+                </ul>
+                <span class="tool-button">Apri AlmaDL Filename Cleaner →</span>
+            </a>
+
+            <a href="/generate-readme" class="tool-card readme-generator">
+                <span class="tool-icon">📝</span>
+                <h2 class="tool-title">AlmaDL README Generator</h2>
+                <p class="tool-description">Genera un README file per i dataset e il software</p>
+                <ul class="tool-features">
+                    <li>Carica il file JSON con i metadati del dataset</li>
+                    <li>Legge i file e le cartelle all'interno degli archivi ZIP</li>
+                    <li>Integra le informazioni del JSON con documentazione aggiuntiva</li>
+                    <li>Genera il README file in formato .docx e .txt</li>
+                </ul>
+                <span class="tool-button">Apri AlmaDL README Generator →</span>
+            </a>
+
+        <a href="/generate-cover" class="tool-card cover-generator">
+                <span class="tool-icon">📄</span>
+                <h2 class="tool-title">AlmaDL Cover Generator</h2>
+                <p class="tool-description">Genera una copertina per i documenti</p>
+                <ul class="tool-features">
+                    <li>Carica il file JSON con i metadati del documento</li>
+                    <li>Controlla e modifica le informazioni prima di generare la copertina</li>
+                    <li>Gestisce le licenze d'uso</li>
+                    <li>Genera il README file in formato .docx e .pdf</li>
+                </ul>
+                <span class="tool-button">Apri AlmaDL README Generator →</span>
+            </a>
+        </div>
+
+        <footer>
+            <p>🄯 2026, AlmaDL e Claude Sonnet 4.5. Questo software è rilasciato con licenza <a href="https://creativecommons.org/licenses/by/4.0/deed.en">Creative Commons Attribuzione 4.0</a></p>
+            <p><strong>Tutti gli strumenti funzionano sul tuo browser</strong></p>
+            <p>Nessun dato è inviato o salvato sui nostri server. I tuoi file rimangono privati</p>
+        </footer>
+    </div>
+</body>
+</html>

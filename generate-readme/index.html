@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>README Generator - Dataset Documentation</title>
+    <!-- Load docx library -->
+    <script src="https://unpkg.com/docx@9.5.1/dist/index.umd.cjs"></script>
+    <!-- Ensure this is before your main script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .upload-area {
+            border: 3px dashed #a8edea;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f0fffe;
+            margin-bottom: 30px;
+        }
+
+        .upload-area:hover {
+            border-color: #fed6e3;
+            background: #fff5f8;
+        }
+
+        .upload-area.dragover {
+            border-color: #fed6e3;
+            background: #ffe8f0;
+            transform: scale(1.02);
+        }
+
+        .upload-area.small {
+            padding: 30px 15px;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #555;
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .metadata-preview {
+            display: none;
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .metadata-preview h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+
+        .metadata-info {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .metadata-info p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        .metadata-info strong {
+            color: #333;
+        }
+
+        .form-section {
+            display: none;
+        }
+
+        .section-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #a8edea;
+        }
+
+        .section-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .help-text {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group input[type="email"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #a8edea;
+        }
+
+        .optional-label {
+            font-size: 0.85em;
+            color: #999;
+            font-weight: normal;
+            margin-left: 5px;
+        }
+
+        .repeatable-section {
+            margin-top: 15px;
+        }
+
+        .repeatable-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .repeatable-item h4 {
+            color: #555;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .file-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: start;
+            gap: 10px;
+        }
+
+        .file-icon {
+            font-size: 1.5em;
+            flex-shrink: 0;
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .file-size {
+            font-size: 0.85em;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .file-description {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .zip-explore-options {
+            background: #fff3cd;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .zip-explore-options label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        .nested-file {
+            margin-left: 30px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-left: 2px solid #ddd;
+            margin-bottom: 5px;
+        }
+
+        .remove-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+            flex-shrink: 0;
+        }
+
+        .remove-btn:hover {
+            background: #d32f2f;
+        }
+
+        .add-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .add-btn:hover {
+            background: #45a049;
+        }
+
+        .export-options {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .export-options h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: #555;
+        }
+
+        .radio-group input[type="radio"] {
+            cursor: pointer;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .button {
+            flex: 1;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #333;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(168, 237, 234, 0.4);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .button.secondary {
+            background: #999;
+            color: white;
+        }
+
+        .button.secondary:hover {
+            background: #777;
+        }
+
+        .progress {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .progress-spinner {
+            font-size: 2em;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success {
+            display: none;
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .success h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+
+        .error {
+            display: none;
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .error p {
+            color: #c62828;
+            margin: 0;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .button-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 README Generator</h1>
+        <p class="subtitle">Create dataset documentation from JSON metadata</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📄</div>
+            <div class="upload-text">Carica il file dei metadati JSON</div>
+            <div class="upload-subtext">Clicca per selezionare il file o trascina qui il tuo file .json o .js</div>
+            <div class="upload-subtext">Il file può essere scaricato utilizzando questa URL
+                https://amsacta.unibo.it/cgi/export/eprint/XXXX/JSON/amsacta-eprint-XXXX.js<br>
+                Dove XXXX rappresenta l'EPrint ID della tua bozza</div>
+            <input type="file" id="jsonInput" accept=".json, .js">
+        </div>
+
+        <div class="metadata-preview" id="metadataPreview">
+            <h3>✓ Metadata Loaded</h3>
+            <div class="metadata-info" id="metadataInfo"></div>
+        </div>
+
+        <div class="error" id="error">
+            <p id="errorMessage"></p>
+        </div>
+
+        <div class="form-section" id="formSection">
+            <!-- Data Files Upload -->
+            <div class="section-card">
+                <h3>📂 Dataset Files <span class="optional-label">(Optional)</span></h3>
+                <p class="help-text">Upload the actual data files to automatically generate file list and descriptions</p>
+                
+                <div class="upload-area small" id="filesUploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Upload Data Files</div>
+                    <div class="upload-subtext">Click or drag & drop multiple files</div>
+                    <input type="file" id="filesInput" multiple>
+                </div>
+
+                <div id="filesList"></div>
+            </div>
+
+            <!-- Dataset Contents -->
+            <div class="section-card">
+                <h3>📁 Dataset Contents Description</h3>
+                <p class="help-text">Additional description of dataset structure</p>
+                
+                <div class="form-group">
+                    <label>Dataset Overview</label>
+                    <textarea id="datasetContents" placeholder="e.g., The dataset consists of:
+- 1 text file saved in .rtf format
+- 1 tabular file saved in .csv format
+- 1 README file"></textarea>
+                </div>
+            </div>
+
+            <!-- File Specifications -->
+            <div class="section-card">
+                <h3>⚙️ File Specifications <span class="optional-label">(Optional)</span></h3>
+                <p class="help-text">Technical information about file formats</p>
+                
+                <div class="form-group">
+                    <label>Character Set</label>
+                    <input type="text" id="charset" placeholder="e.g., UTF-8">
+                </div>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Field Delimiter</label>
+                        <input type="text" id="delimiter" placeholder="e.g., comma (,)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Text Delimiter</label>
+                        <input type="text" id="textDelimiter" placeholder='e.g., double quotes (")'>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Additional File Specifications</label>
+                    <textarea id="fileSpecs" placeholder="Any other technical details about file formats, conversion, etc."></textarea>
+                </div>
+            </div>
+
+            <!-- Data Sources -->
+            <div class="section-card">
+                <h3>🔍 Data Sources <span class="optional-label">(Optional)</span></h3>
+                <p class="help-text">Where does the data come from?</p>
+                
+                <div class="form-group">
+                    <textarea id="dataSources" placeholder="Describe the sources of data for this dataset"></textarea>
+                </div>
+            </div>
+
+            <!-- Methodology -->
+            <div class="section-card">
+                <h3>🔬 Methodology <span class="optional-label">(Optional)</span></h3>
+                <p class="help-text">Data collection and processing methods</p>
+                
+                <div class="form-group">
+                    <textarea id="methodology" placeholder="Describe how the data was collected and processed"></textarea>
+                </div>
+            </div>
+
+            <!-- Variables/Codebook -->
+            <div class="section-card">
+                <h3>📊 List of Variables <span class="optional-label">(Optional)</span></h3>
+                <p class="help-text">Explanation of variables and their units of measure</p>
+                
+                <div id="variablesList"></div>
+                <button class="add-btn" onclick="addVariable()">+ Add Variable</button>
+            </div>
+
+            <!-- Additional Notes -->
+            <div class="section-card">
+                <h3>📌 Notes <span class="optional-label">(Optional)</span></h3>
+                <p class="help-text">Any additional information related to the dataset</p>
+                
+                <div class="form-group">
+                    <textarea id="notes" placeholder="Further information, acknowledgments, etc."></textarea>
+                </div>
+            </div>
+
+            <!-- Export Options -->
+            <div class="export-options">
+                <h4>📤 Export Format</h4>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="exportFormat" value="docx" checked>
+                        Word Document (.docx)
+                    </label>
+                    <label>
+                        <input type="radio" name="exportFormat" value="txt">
+                        Text File (.txt)
+                    </label>
+                </div>
+            </div>
+
+            <div class="button-container">
+                <button class="button secondary" onclick="resetForm()">Reset</button>
+                <button class="button" id="generateBtn" onclick="generateREADME()">Generate README</button>
+            </div>
+        </div>
+
+        <div class="progress" id="progress">
+            <div class="progress-spinner">⏳</div>
+            <p>Generating README file...</p>
+        </div>
+
+        <div class="success" id="success">
+            <h3>✓ README Generated Successfully!</h3>
+            <p>Your file has been downloaded</p>
+        </div>
+    </div>
+
+    <script>
+        let metadata = null;
+        let variableCount = 0;
+        let uploadedFiles = [];
+
+        // JSON Upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const jsonInput = document.getElementById('jsonInput');
+
+        uploadArea.addEventListener('click', (e) => jsonInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleJsonFile(files[0]);
+            }
+        });
+
+        jsonInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleJsonFile(e.target.files[0]);
+            }
+        });
+
+        // Data Files Upload handling
+        const filesUploadArea = document.getElementById('filesUploadArea');
+        const filesInput = document.getElementById('filesInput');
+
+        filesUploadArea.addEventListener('click', (e) => filesInput.click());
+
+        filesUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            filesUploadArea.classList.add('dragover');
+        });
+
+        filesUploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            filesUploadArea.classList.remove('dragover');
+        });
+
+        filesUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            filesUploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            handleDataFiles(files);
+        });
+
+        filesInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            handleDataFiles(files);
+        });
+
+        async function handleJsonFile(file) {
+            if (!file.name.endsWith('.json') && !file.name.endsWith('.js')) {
+                showError('Please upload a JSON file');
+                return;
+            }
+
+            try {
+                const text = await file.text();
+                metadata = JSON.parse(text);
+                displayMetadata();
+                document.getElementById('formSection').style.display = 'block';
+                hideError();
+            } catch (error) {
+                showError('Error reading JSON file: ' + error.message);
+            }
+        }
+
+        async function handleDataFiles(files) {
+            for (const file of files) {
+                if (!uploadedFiles.find(f => f.name === file.name)) {
+                    const fileData = {
+                        file: file,
+                        name: file.name,
+                        size: file.size,
+                        description: '',
+                        isZip: file.name.toLowerCase().endsWith('.zip'),
+                        zipContents: null,
+                        exploreZip: false
+                    };
+                    
+                    uploadedFiles.push(fileData);
+                }
+            }
+            displayFiles();
+        }
+
+        async function displayFiles() {
+            const container = document.getElementById('filesList');
+            container.innerHTML = '';
+
+            for (let index = 0; index < uploadedFiles.length; index++) {
+                const fileData = uploadedFiles[index];
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                
+                const ext = fileData.name.split('.').pop().toLowerCase();
+                let icon = '📄';
+                if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) icon = '🗜️';
+                else if (['csv', 'xlsx', 'xls'].includes(ext)) icon = '📊';
+                else if (['txt', 'rtf', 'doc', 'docx'].includes(ext)) icon = '📝';
+                else if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(ext)) icon = '🖼️';
+                else if (['pdf'].includes(ext)) icon = '📕';
+                
+                let zipExploreHtml = '';
+                if (fileData.isZip) {
+                    zipExploreHtml = `
+                        <div class="zip-explore-options">
+                            <label>
+                                <input type="checkbox" onchange="toggleZipExploration(${index}, this.checked)">
+                                Explore ZIP contents
+                            </label>
+                        </div>
+                    `;
+                }
+                
+                item.innerHTML = `
+                    <div class="file-icon">${icon}</div>
+                    <div class="file-details">
+                        <div class="file-name">${fileData.name}</div>
+                        <div class="file-size">${formatBytes(fileData.size)}</div>
+                        ${zipExploreHtml}
+                        <input type="text" class="file-description" 
+                               placeholder="Describe this file..." 
+                               value="${fileData.description}"
+                               onchange="updateFileDescription(${index}, this.value)">
+                        <div id="zip-contents-${index}"></div>
+                    </div>
+                    <button class="remove-btn" onclick="removeFile(${index})">Remove</button>
+                `;
+                
+                container.appendChild(item);
+                
+                // Display ZIP contents if already explored
+                if (fileData.exploreZip && fileData.zipContents) {
+                    displayZipContents(index);
+                }
+            }
+        }
+
+        function updateFileDescription(index, description) {
+            uploadedFiles[index].description = description;
+        }
+
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            displayFiles();
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function displayMetadata() {
+            const info = document.getElementById('metadataInfo');
+            const preview = document.getElementById('metadataPreview');
+            
+            let html = '';
+            if (metadata.title) html += `<p><strong>Title:</strong> ${metadata.title}</p>`;
+            if (metadata.projectname) html += `<p><strong>Project:</strong> ${metadata.projectname}</p>`;
+            if (metadata.projectacronym) html += `<p><strong>Acronym:</strong> ${metadata.projectacronym}</p>`;
+            if (metadata.creators && metadata.creators.length > 0) {
+                const creator = metadata.creators[0];
+                html += `<p><strong>Creator:</strong> ${creator.name.given} ${creator.name.family}</p>`;
+            }
+            if (metadata.date) html += `<p><strong>Date:</strong> ${metadata.date}</p>`;
+            
+            info.innerHTML = html;
+            preview.style.display = 'block';
+        }
+
+        function addVariable() {
+            variableCount++;
+            const container = document.getElementById('variablesList');
+            
+            const item = document.createElement('div');
+            item.className = 'repeatable-item';
+            item.id = `variable-${variableCount}`;
+            item.innerHTML = `
+                <button class="remove-btn" onclick="removeVariable(${variableCount})" style="position: absolute; top: 10px; right: 10px;">Remove</button>
+                <h4>Variable ${variableCount}</h4>
+                <div class="form-group">
+                    <label>Variable Name</label>
+                    <input type="text" id="varName-${variableCount}" placeholder="e.g., temperature">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="varDesc-${variableCount}" placeholder="e.g., Temperature in Celsius">
+                </div>
+                <div class="form-group">
+                    <label>Unit of Measure <span class="optional-label">(Optional)</span></label>
+                    <input type="text" id="varUnit-${variableCount}" placeholder="e.g., °C">
+                </div>
+            `;
+            
+            container.appendChild(item);
+        }
+
+        function removeVariable(id) {
+            const element = document.getElementById(`variable-${id}`);
+            if (element) {
+                element.remove();
+            }
+        }
+
+        function formatPersonName(person) {
+            const name = person.name;
+            return `${name.given} ${name.family}`;
+        }
+
+        function formatPerson(person) {
+            let str = formatPersonName(person);
+            if (person.affiliation) str += ` (${person.affiliation})`;
+            if (person.orcid) str += `, ORCID: ${person.orcid}`;
+            if (person.id && person.id.includes('@')) str += `, ${person.id}`;
+            return str;
+        }
+
+        function getLicenseName(licenseCode) {
+            const licenses = {
+                'cc_by_4': 'Creative Commons Attribution 4.0 International (CC BY 4.0)',
+                'cc_by_sa_4': 'Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)',
+                'cc_by_nc_4': 'Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)',
+                'cc_by_nd_4': 'Creative Commons Attribution-NoDerivatives 4.0 International (CC BY-ND 4.0)',
+                'cc0': 'CC0 1.0 Universal (CC0 1.0) Public Domain Dedication'
+            };
+            return licenses[licenseCode] || licenseCode;
+        }
+
+        async function generateREADME() {
+            document.getElementById('progress').style.display = 'block';
+            document.getElementById('generateBtn').disabled = true;
+
+            try {
+                const format = document.querySelector('input[name="exportFormat"]:checked').value;
+                
+                if (format === 'docx') {
+                    await generateDOCX();
+                } else {
+                    generateTXT();
+                }
+
+                document.getElementById('progress').style.display = 'none';
+                document.getElementById('success').style.display = 'block';
+                document.getElementById('generateBtn').disabled = false;
+                
+                setTimeout(() => {
+                    document.getElementById('success').style.display = 'none';
+                }, 3000);
+
+            } catch (error) {
+                document.getElementById('progress').style.display = 'none';
+                document.getElementById('generateBtn').disabled = false;
+                showError('Error generating README: ' + error.message);
+                console.error(error);
+            }
+        }
+
+        async function generateDOCX() {
+            const { Document, Packer, Paragraph, TextRun, HeadingLevel } = docx;
+
+            const doc = new Document({
+                styles: {
+                    default: {
+                        document: {
+                            run: { font: "Arial", size: 24 }
+                        }
+                    },
+                    paragraphStyles: [
+                        {
+                            id: "Heading1",
+                            name: "Heading 1",
+                            basedOn: "Normal",
+                            next: "Normal",
+                            quickFormat: true,
+                            run: { size: 32, bold: true, font: "Arial" },
+                            paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 0 }
+                        },
+                        {
+                            id: "Heading2",
+                            name: "Heading 2",
+                            basedOn: "Normal",
+                            next: "Normal",
+                            quickFormat: true,
+                            run: { size: 28, bold: true, font: "Arial" },
+                            paragraph: { spacing: { before: 200, after: 100 }, outlineLevel: 1 }
+                        }
+                    ]
+                },
+                sections: [{
+                    properties: {
+                        page: {
+                            size: {
+                                width: 12240,
+                                height: 15840
+                            },
+                            margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
+                        }
+                    },
+                    children: buildDocxContent()
+                }]
+            });
+
+            const blob = await Packer.toBlob(doc);
+            const filename = `README_${metadata.projectacronym || 'dataset'}_${new Date().toISOString().split('T')[0]}.docx`;
+            saveAs(blob, filename);
+        }
+
+        function buildDocxContent() {
+            const { Paragraph, TextRun, HeadingLevel } = docx;
+            const content = [];
+
+            // Title
+            content.push(new Paragraph({
+                heading: HeadingLevel.HEADING_1,
+                children: [new TextRun("README file")]
+            }));
+
+            content.push(new Paragraph({ children: [new TextRun("")] }));
+
+            // Dataset Title
+            content.push(new Paragraph({
+                children: [
+                    new TextRun({ text: "Dataset Title: ", bold: true }),
+                    new TextRun(metadata.title || "[Title not provided]")
+                ]
+            }));
+
+            content.push(new Paragraph({ children: [new TextRun("")] }));
+
+            // Authors
+            content.push(new Paragraph({
+                children: [new TextRun({ text: "Dataset Author/s:", bold: true })]
+            }));
+
+            if (metadata.creators && metadata.creators.length > 0) {
+                metadata.creators.forEach(creator => {
+                    content.push(new Paragraph({
+                        children: [new TextRun(formatPerson(creator) + ";")]
+                    }));
+                });
+            } else {
+                content.push(new Paragraph({
+                    children: [new TextRun("[No authors provided]")]
+                }));
+            }
+
+            content.push(new Paragraph({ children: [new TextRun("")] }));
+
+            // Contributors
+            if (metadata.contributors && metadata.contributors.length > 0) {
+                content.push(new Paragraph({
+                    children: [new TextRun({ text: "Data Set Contributor/s:", bold: true })]
+                }));
+
+                metadata.contributors.forEach(contributor => {
+                    content.push(new Paragraph({
+                        children: [new TextRun(formatPerson(contributor) + ";")]
+                    }));
+                });
+
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // Contact Person
+            const contactPerson = metadata.contributors?.find(c => c.type === 'ContactPerson') || metadata.creators?.[0];
+            if (contactPerson) {
+                content.push(new Paragraph({
+                    children: [new TextRun({ text: "Data Set Contact Person/s:", bold: true })]
+                }));
+                content.push(new Paragraph({
+                    children: [new TextRun(formatPerson(contactPerson) + ";")]
+                }));
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // License
+            content.push(new Paragraph({
+                children: [new TextRun({ text: "Data Set License:", bold: true })]
+            }));
+
+            const license = metadata.documents?.[0]?.license ? getLicenseName(metadata.documents[0].license) : "[License not specified]";
+            content.push(new Paragraph({
+                children: [new TextRun(`This data set is distributed under a ${license}`)]
+            }));
+
+            content.push(new Paragraph({ children: [new TextRun("")] }));
+
+            // Publication Year
+            const year = metadata.date ? metadata.date.split('-')[0] : new Date().getFullYear();
+            content.push(new Paragraph({
+                children: [
+                    new TextRun({ text: "Publication Year: ", bold: true }),
+                    new TextRun(year.toString())
+                ]
+            }));
+
+            content.push(new Paragraph({ children: [new TextRun("")] }));
+
+            // Project Info
+            if (metadata.projectname || metadata.projectacronym) {
+                content.push(new Paragraph({
+                    children: [new TextRun({ text: "Project Info:", bold: true })]
+                }));
+
+                let projectInfo = '';
+                if (metadata.projectacronym) projectInfo += metadata.projectacronym + ', ';
+                if (metadata.projectname) projectInfo += metadata.projectname + ', ';
+                if (metadata.projectid) projectInfo += `Project ID: ${metadata.projectid}, `;
+                if (metadata.funder) projectInfo += `Funded by: ${metadata.funder}`;
+
+                content.push(new Paragraph({
+                    children: [new TextRun(projectInfo)]
+                }));
+
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // Dataset Contents Section
+            content.push(new Paragraph({
+                heading: HeadingLevel.HEADING_2,
+                children: [new TextRun("Data set Contents")]
+            }));
+
+            // Show uploaded files if any
+            if (uploadedFiles.length > 0) {
+                content.push(new Paragraph({
+                    children: [new TextRun({ text: "Files in this dataset:", bold: true })]
+                }));
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+
+                uploadedFiles.forEach(fileData => {
+                    content.push(new Paragraph({
+                        children: [new TextRun(`${fileData.name} (${formatBytes(fileData.size)})`)]
+                    }));
+                    
+                    // If ZIP was explored, show its contents
+                    if (fileData.exploreZip && fileData.zipContents) {
+                        content.push(new Paragraph({
+                            children: [new TextRun({ text: `  Contents of ${fileData.name}:`, italics: true })]
+                        }));
+                        fileData.zipContents.forEach(item => {
+                            const icon = item.isFolder ? '📁' : '📄';
+                            content.push(new Paragraph({
+                                children: [new TextRun(`    ${icon} ${item.path}${!item.isFolder ? ` (${formatBytes(item.size)})` : ''}`)]
+                            }));
+                        });
+                    }
+                });
+
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            const datasetContents = document.getElementById('datasetContents').value;
+            if (datasetContents) {
+                content.push(new Paragraph({
+                    children: [new TextRun(datasetContents)]
+                }));
+            }
+
+            content.push(new Paragraph({ children: [new TextRun("")] }));
+
+            // Abstract
+            content.push(new Paragraph({
+                heading: HeadingLevel.HEADING_2,
+                children: [new TextRun("Abstract")]
+            }));
+
+            content.push(new Paragraph({
+                children: [new TextRun(metadata.abstract || "[Abstract not provided]")]
+            }));
+
+            content.push(new Paragraph({ children: [new TextRun("")] }));
+
+            // Content of Files
+            content.push(new Paragraph({
+                heading: HeadingLevel.HEADING_2,
+                children: [new TextRun("Content of the files:")]
+            }));
+
+            if (uploadedFiles.length > 0) {
+                uploadedFiles.forEach(fileData => {
+                    const desc = fileData.description || "[description needed]";
+                    content.push(new Paragraph({
+                        children: [new TextRun(`file ${fileData.name} contains ${desc}`)]
+                    }));
+                    
+                    // If ZIP was explored, show descriptions of contents
+                    if (fileData.exploreZip && fileData.zipContents) {
+                        fileData.zipContents.forEach(item => {
+                            if (!item.isFolder) {
+                                const itemDesc = item.description || "[description needed]";
+                                content.push(new Paragraph({
+                                    children: [new TextRun(`  ${item.path} contains ${itemDesc}`)]
+                                }));
+                            }
+                        });
+                    }
+                });
+            } else if (metadata.documents && metadata.documents.length > 0) {
+                metadata.documents.forEach(doc => {
+                    if (doc.files) {
+                        doc.files.forEach(file => {
+                            content.push(new Paragraph({
+                                children: [new TextRun(`file ${file.filename} contains [description needed]`)]
+                            }));
+                        });
+                    }
+                });
+            } else {
+                content.push(new Paragraph({
+                    children: [new TextRun("[Describe the content of each file]")]
+                }));
+            }
+
+            content.push(new Paragraph({ children: [new TextRun("")] }));
+
+            // File Specifications
+            const charset = document.getElementById('charset').value;
+            const delimiter = document.getElementById('delimiter').value;
+            const textDelimiter = document.getElementById('textDelimiter').value;
+            const fileSpecs = document.getElementById('fileSpecs').value;
+
+            if (charset || delimiter || textDelimiter || fileSpecs) {
+                content.push(new Paragraph({
+                    heading: HeadingLevel.HEADING_2,
+                    children: [new TextRun("File specifications")]
+                }));
+
+                if (charset) {
+                    content.push(new Paragraph({
+                        children: [new TextRun(`Character set: ${charset}`)]
+                    }));
+                }
+
+                if (delimiter) {
+                    content.push(new Paragraph({
+                        children: [new TextRun(`Field delimiter: ${delimiter}`)]
+                    }));
+                }
+
+                if (textDelimiter) {
+                    content.push(new Paragraph({
+                        children: [new TextRun(`Text delimiter: ${textDelimiter}`)]
+                    }));
+                }
+
+                if (fileSpecs) {
+                    content.push(new Paragraph({
+                        children: [new TextRun(fileSpecs)]
+                    }));
+                }
+
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // Data Sources
+            const dataSources = document.getElementById('dataSources').value;
+            if (dataSources) {
+                content.push(new Paragraph({
+                    heading: HeadingLevel.HEADING_2,
+                    children: [new TextRun("Data sources")]
+                }));
+
+                content.push(new Paragraph({
+                    children: [new TextRun(dataSources)]
+                }));
+
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // Methodology
+            const methodology = document.getElementById('methodology').value;
+            if (methodology) {
+                content.push(new Paragraph({
+                    heading: HeadingLevel.HEADING_2,
+                    children: [new TextRun("Methodology")]
+                }));
+
+                content.push(new Paragraph({
+                    children: [new TextRun(methodology)]
+                }));
+
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // Variables
+            const variables = [];
+            for (let i = 1; i <= variableCount; i++) {
+                const nameEl = document.getElementById(`varName-${i}`);
+                const descEl = document.getElementById(`varDesc-${i}`);
+                const unitEl = document.getElementById(`varUnit-${i}`);
+
+                if (nameEl && nameEl.value) {
+                    let varText = `${nameEl.value}: ${descEl.value || '[description]'}`;
+                    if (unitEl && unitEl.value) {
+                        varText += ` (${unitEl.value})`;
+                    }
+                    variables.push(varText);
+                }
+            }
+
+            if (variables.length > 0) {
+                content.push(new Paragraph({
+                    heading: HeadingLevel.HEADING_2,
+                    children: [new TextRun("List of variables")]
+                }));
+
+                variables.forEach(variable => {
+                    content.push(new Paragraph({
+                        children: [new TextRun(variable)]
+                    }));
+                });
+
+                content.push(new Paragraph({ children: [new TextRun("")] }));
+            }
+
+            // Notes
+            const notes = document.getElementById('notes').value;
+            if (notes) {
+                content.push(new Paragraph({
+                    heading: HeadingLevel.HEADING_2,
+                    children: [new TextRun("Notes")]
+                }));
+
+                content.push(new Paragraph({
+                    children: [new TextRun(notes)]
+                }));
+            }
+
+            return content;
+        }
+
+        function generateTXT() {
+            const content = buildTextContent();
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const filename = `README_${metadata.projectacronym || 'dataset'}_${new Date().toISOString().split('T')[0]}.txt`;
+            
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        function buildTextContent() {
+            let content = '';
+
+            // Title
+            content += "README file\n";
+            content += "=".repeat(50) + "\n\n";
+
+            // Dataset Title
+            content += "Dataset Title: " + (metadata.title || "[Title not provided]") + "\n\n";
+
+            // Authors
+            content += "Dataset Author/s:\n";
+            if (metadata.creators && metadata.creators.length > 0) {
+                metadata.creators.forEach(creator => {
+                    content += "  " + formatPerson(creator) + ";\n";
+                });
+            } else {
+                content += "  [No authors provided]\n";
+            }
+            content += "\n";
+
+            // Contributors
+            if (metadata.contributors && metadata.contributors.length > 0) {
+                content += "Data Set Contributor/s:\n";
+                metadata.contributors.forEach(contributor => {
+                    content += "  " + formatPerson(contributor) + ";\n";
+                });
+                content += "\n";
+            }
+
+            // Contact Person
+            const contactPerson = metadata.contributors?.find(c => c.type === 'ContactPerson') || metadata.creators?.[0];
+            if (contactPerson) {
+                content += "Data Set Contact Person/s:\n";
+                content += "  " + formatPerson(contactPerson) + ";\n\n";
+            }
+
+            // License
+            content += "Data Set License:\n";
+            const license = metadata.documents?.[0]?.license ? getLicenseName(metadata.documents[0].license) : "[License not specified]";
+            content += "This data set is distributed under a " + license + "\n\n";
+
+            // Publication Year
+            const year = metadata.date ? metadata.date.split('-')[0] : new Date().getFullYear();
+            content += "Publication Year: " + year + "\n\n";
+
+            // Project Info
+            if (metadata.projectname || metadata.projectacronym) {
+                content += "Project Info:\n";
+                let projectInfo = '';
+                if (metadata.projectacronym) projectInfo += metadata.projectacronym + ', ';
+                if (metadata.projectname) projectInfo += metadata.projectname + ', ';
+                if (metadata.projectid) projectInfo += `Project ID: ${metadata.projectid}, `;
+                if (metadata.funder) projectInfo += `Funded by: ${metadata.funder}`;
+                content += projectInfo + "\n\n";
+            }
+
+            // Dataset Contents Section
+            content += "\nData set Contents\n";
+            content += "-".repeat(50) + "\n\n";
+
+            // Show uploaded files if any
+            if (uploadedFiles.length > 0) {
+                content += "Files in this dataset:\n\n";
+                uploadedFiles.forEach(fileData => {
+                    content += `${fileData.name} (${formatBytes(fileData.size)})\n`;
+                    
+                    // If ZIP was explored, show its contents
+                    if (fileData.exploreZip && fileData.zipContents) {
+                        content += `  Contents of ${fileData.name}:\n`;
+                        fileData.zipContents.forEach(item => {
+                            const icon = item.isFolder ? '📁' : '📄';
+                            content += `    ${icon} ${item.path}${!item.isFolder ? ` (${formatBytes(item.size)})` : ''}\n`;
+                        });
+                    }
+                });
+                content += "\n";
+            }
+
+            const datasetContents = document.getElementById('datasetContents').value;
+            if (datasetContents) {
+                content += datasetContents + "\n\n";
+            }
+
+            // Abstract
+            content += "\nAbstract\n";
+            content += "-".repeat(50) + "\n\n";
+            content += (metadata.abstract || "[Abstract not provided]") + "\n\n";
+
+            // Content of Files
+            content += "\nContent of the files:\n";
+            content += "-".repeat(50) + "\n\n";
+
+            if (uploadedFiles.length > 0) {
+                uploadedFiles.forEach(fileData => {
+                    const desc = fileData.description || "[description needed]";
+                    content += `file ${fileData.name} contains ${desc}\n`;
+                    
+                    // If ZIP was explored, show descriptions of contents
+                    if (fileData.exploreZip && fileData.zipContents) {
+                        fileData.zipContents.forEach(item => {
+                            if (!item.isFolder) {
+                                const itemDesc = item.description || "[description needed]";
+                                content += `  ${item.path} contains ${itemDesc}\n`;
+                            }
+                        });
+                    }
+                });
+            } else if (metadata.documents && metadata.documents.length > 0) {
+                metadata.documents.forEach(doc => {
+                    if (doc.files) {
+                        doc.files.forEach(file => {
+                            content += `file ${file.filename} contains [description needed]\n`;
+                        });
+                    }
+                });
+            } else {
+                content += "[Describe the content of each file]\n";
+            }
+            content += "\n";
+
+            // File Specifications
+            const charset = document.getElementById('charset').value;
+            const delimiter = document.getElementById('delimiter').value;
+            const textDelimiter = document.getElementById('textDelimiter').value;
+            const fileSpecs = document.getElementById('fileSpecs').value;
+
+            if (charset || delimiter || textDelimiter || fileSpecs) {
+                content += "\nFile specifications\n";
+                content += "-".repeat(50) + "\n\n";
+
+                if (charset) content += `Character set: ${charset}\n`;
+                if (delimiter) content += `Field delimiter: ${delimiter}\n`;
+                if (textDelimiter) content += `Text delimiter: ${textDelimiter}\n`;
+                if (fileSpecs) content += fileSpecs + "\n";
+                content += "\n";
+            }
+
+            // Data Sources
+            const dataSources = document.getElementById('dataSources').value;
+            if (dataSources) {
+                content += "\nData sources\n";
+                content += "-".repeat(50) + "\n\n";
+                content += dataSources + "\n\n";
+            }
+
+            // Methodology
+            const methodology = document.getElementById('methodology').value;
+            if (methodology) {
+                content += "\nMethodology\n";
+                content += "-".repeat(50) + "\n\n";
+                content += methodology + "\n\n";
+            }
+
+            // Variables
+            const variables = [];
+            for (let i = 1; i <= variableCount; i++) {
+                const nameEl = document.getElementById(`varName-${i}`);
+                const descEl = document.getElementById(`varDesc-${i}`);
+                const unitEl = document.getElementById(`varUnit-${i}`);
+
+                if (nameEl && nameEl.value) {
+                    let varText = `${nameEl.value}: ${descEl.value || '[description]'}`;
+                    if (unitEl && unitEl.value) {
+                        varText += ` (${unitEl.value})`;
+                    }
+                    variables.push(varText);
+                }
+            }
+
+            if (variables.length > 0) {
+                content += "\nList of variables\n";
+                content += "-".repeat(50) + "\n\n";
+                variables.forEach(variable => {
+                    content += variable + "\n";
+                });
+                content += "\n";
+            }
+
+            // Notes
+            const notes = document.getElementById('notes').value;
+            if (notes) {
+                content += "\nNotes\n";
+                content += "-".repeat(50) + "\n\n";
+                content += notes + "\n";
+            }
+
+            return content;
+        }
+
+        async function toggleZipExploration(index, explore) {
+            const fileData = uploadedFiles[index];
+            fileData.exploreZip = explore;
+            
+            if (explore && !fileData.zipContents) {
+                try {
+                    const zip = await JSZip.loadAsync(fileData.file);
+                    const contents = [];
+                    
+                    zip.forEach((relativePath, file) => {
+                        contents.push({
+                            path: relativePath,
+                            isFolder: file.dir,
+                            size: file._data ? file._data.uncompressedSize : 0,
+                            description: ''
+                        });
+                    });
+                    
+                    fileData.zipContents = contents;
+                    displayZipContents(index);
+                } catch (error) {
+                    showError('Error exploring ZIP file: ' + error.message);
+                    fileData.exploreZip = false;
+                }
+            } else if (!explore) {
+                document.getElementById(`zip-contents-${index}`).innerHTML = '';
+            } else {
+                displayZipContents(index);
+            }
+        }
+
+        function displayZipContents(index) {
+            const fileData = uploadedFiles[index];
+            const container = document.getElementById(`zip-contents-${index}`);
+            
+            if (!fileData.zipContents || fileData.zipContents.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            let html = '<div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">';
+            html += '<strong>ZIP Contents:</strong><br>';
+            
+            fileData.zipContents.forEach((item, itemIndex) => {
+                const icon = item.isFolder ? '📁' : '📄';
+                html += `
+                    <div class="nested-file">
+                        ${icon} ${item.path} ${!item.isFolder ? `(${formatBytes(item.size)})` : ''}
+                        <input type="text" class="file-description" 
+                               placeholder="Describe..." 
+                               value="${item.description}"
+                               onchange="updateZipItemDescription(${index}, ${itemIndex}, this.value)"
+                               style="margin-top: 5px;">
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function updateZipItemDescription(fileIndex, itemIndex, description) {
+            uploadedFiles[fileIndex].zipContents[itemIndex].description = description;
+        }
+
+        function resetForm() {
+            if (confirm('Are you sure you want to reset the form?')) {
+                metadata = null;
+                uploadedFiles = [];
+                document.getElementById('metadataPreview').style.display = 'none';
+                document.getElementById('formSection').style.display = 'none';
+                document.getElementById('jsonInput').value = '';
+                document.getElementById('filesInput').value = '';
+                document.getElementById('filesList').innerHTML = '';
+                
+                // Clear all form fields
+                document.querySelectorAll('input[type="text"], textarea').forEach(el => el.value = '');
+                document.getElementById('variablesList').innerHTML = '';
+                variableCount = 0;
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
