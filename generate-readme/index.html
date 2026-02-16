@@ -441,13 +441,44 @@
         <h1>📝 README Generator</h1>
         <p class="subtitle">Create dataset documentation from JSON metadata</p>
 
+        <!-- EPrint ID Fetch Section -->
+        <div class="section-card" style="margin-bottom: 20px;">
+            <h3>🔍 Download Metadata by EPrint ID</h3>
+            <p class="help-text">Enter the EPrint ID to get the download link for your metadata file</p>
+            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">EPrint ID</label>
+                    <input type="number" id="eprintIdInput" placeholder="e.g., 8622" 
+                           style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em;">
+                </div>
+            </div>
+            <div style="margin-top: 15px; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #667eea;">
+                <div style="font-size: 0.9em; color: #555; margin-bottom: 10px;">
+                    <strong>Direct Download URL:</strong><br>
+                    <code style="background: white; padding: 5px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; font-size: 0.85em;">
+                        https://amsacta.unibo.it/cgi/export/eprint/<span id="eprintIdDisplay">XXXX</span>/JSON/amsacta-eprint-<span id="eprintIdDisplay2">XXXX</span>.js
+                    </code>
+                </div>
+                <a id="directDownloadLink" href="#" target="_blank" 
+                   style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                          color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.95em;"
+                   onclick="return eprintIdInput.value ? true : (alert('Please enter an EPrint ID first'), false);">
+                    📥 Open Download Link in New Tab
+                </a>
+                <div style="margin-top: 10px; font-size: 0.85em; color: #666;">
+                    Click the link above, then save the file and upload it below
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 20px 0; color: #999; font-weight: 600;">
+            — OR —
+        </div>
+
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📄</div>
             <div class="upload-text">Carica il file dei metadati JSON</div>
             <div class="upload-subtext">Clicca per selezionare il file o trascina qui il tuo file .json o .js</div>
-            <div class="upload-subtext">Il file può essere scaricato utilizzando questa URL
-                https://amsacta.unibo.it/cgi/export/eprint/XXXX/JSON/amsacta-eprint-XXXX.js<br>
-                Dove XXXX rappresenta l'EPrint ID della tua bozza</div>
             <input type="file" id="jsonInput" accept=".json, .js">
         </div>
 
@@ -593,6 +624,23 @@
         let metadata = null;
         let variableCount = 0;
         let uploadedFiles = [];
+
+        // EPrint ID display update
+        const eprintIdInput = document.getElementById('eprintIdInput');
+        eprintIdInput.addEventListener('input', (e) => {
+            const id = e.target.value;
+            document.getElementById('eprintIdDisplay').textContent = id || 'XXXX';
+            document.getElementById('eprintIdDisplay2').textContent = id || 'XXXX';
+            
+            // Update direct download link
+            const directLink = document.getElementById('directDownloadLink');
+            if (id) {
+                const url = `https://amsacta.unibo.it/cgi/export/eprint/${id}/JSON/amsacta-eprint-${id}.js`;
+                directLink.href = url;
+            } else {
+                directLink.href = '#';
+            }
+        });
 
         // JSON Upload handling
         const uploadArea = document.getElementById('uploadArea');
