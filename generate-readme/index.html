@@ -1047,7 +1047,7 @@
             content.push(new Paragraph({ children: [new TextRun("")] }));
 
             // Publication Year
-            const year = metadata.date ? metadata.date.split('-')[0] : new Date().getFullYear();
+            const year = metadata.date ? String(metadata.date).split('-')[0] : new Date().getFullYear();
             content.push(new Paragraph({
                 children: [
                     new TextRun({ text: "Publication Year: ", bold: true }),
@@ -1346,7 +1346,7 @@
             content += "This data set is distributed under a " + license + "\n\n";
 
             // Publication Year
-            const year = metadata.date ? metadata.date.split('-')[0] : new Date().getFullYear();
+            const year = metadata.date ? String(metadata.date).split('-')[0] : new Date().getFullYear();
             content += "Publication Year: " + year + "\n\n";
 
             // Project Info
