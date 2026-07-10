@@ -356,6 +356,91 @@
             font-size: 0.9em;
             color: #856404;
         }
+
+        .custom-rules-section {
+            background: #f0f9ff;
+            border: 2px solid #4facfe;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .custom-rules-section h3 {
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .custom-rule-item {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .custom-rule-item input[type="text"] {
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-family: 'Courier New', monospace;
+        }
+
+        .custom-rule-item .rule-arrow {
+            color: #999;
+            font-weight: bold;
+        }
+
+        .custom-rule-item .remove-rule-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+            flex-shrink: 0;
+        }
+
+        .custom-rule-item .remove-rule-btn:hover {
+            background: #d32f2f;
+        }
+
+        .add-rule-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .add-rule-btn:hover {
+            background: #45a049;
+        }
+
+        .log-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+
+        .log-btn:hover {
+            background: #5568d3;
+        }
     </style>
 </head>
 <body>
@@ -403,6 +488,13 @@
             </div>
         </div>
 
+        <div class="custom-rules-section">
+            <h3>🎯 Regole personalizzate <span style="font-weight: normal; font-size: 0.8em; color: #999;">(opzionale)</span></h3>
+            <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">Regole di sostituzione testo (find &amp; replace), applicate prima delle regole generali. Es: <code>=</code> → <code>_</code> sostituirà ogni <code>=</code> con <code>_</code> in tutti i nomi.</p>
+            <div id="customRulesList"></div>
+            <button type="button" class="add-rule-btn" id="addRuleBtn">+ Aggiungi regola</button>
+        </div>
+
         <div class="file-info" id="fileInfo">
             <h3>📋 Informazioni dei file</h3>
             <p><strong>File selezionati:</strong> <span id="fileCount"></span></p>
@@ -447,6 +539,7 @@
             </div>
 
             <button class="download-btn" id="downloadBtn">Scarica il file ZIP pulito</button>
+            <button class="log-btn" id="downloadLogBtn">📋 Scarica il log delle modifiche</button>
             <button class="reset-btn" id="resetBtn">Pulisci un altro ZIP</button>
         </div>
     </div>
@@ -474,6 +567,12 @@
         const errorMessage = document.getElementById('errorMessage');
         const resetBtn = document.getElementById('resetBtn');
         const downloadBtn = document.getElementById('downloadBtn');
+        const downloadLogBtn = document.getElementById('downloadLogBtn');
+        const addRuleBtn = document.getElementById('addRuleBtn');
+        const customRulesList = document.getElementById('customRulesList');
+
+        let customRuleCount = 0;
+        let originalZipName = '';
 
         // Options
         const lowercaseOption = document.getElementById('lowercaseOption');
@@ -522,14 +621,75 @@
             cleanBtn.disabled = false;
         }
 
-        // Remove accents from string
+        // Custom rules management
+        function addCustomRule(fromValue = '', toValue = '') {
+            customRuleCount++;
+            const id = customRuleCount;
+            const item = document.createElement('div');
+            item.className = 'custom-rule-item';
+            item.id = `custom-rule-${id}`;
+            item.innerHTML = `
+                <input type="text" placeholder="testo da cercare (es. =)" value="${fromValue}" id="rule-from-${id}">
+                <span class="rule-arrow">→</span>
+                <input type="text" placeholder="testo sostitutivo (es. _)" value="${toValue}" id="rule-to-${id}">
+                <button type="button" class="remove-rule-btn" onclick="removeCustomRule(${id})">Rimuovi</button>
+            `;
+            customRulesList.appendChild(item);
+        }
+
+        function removeCustomRule(id) {
+            const el = document.getElementById(`custom-rule-${id}`);
+            if (el) el.remove();
+        }
+
+        function getCustomRules() {
+            // Returns an array of {from, to} substring find-and-replace rules (case-insensitive)
+            const rules = [];
+            const items = customRulesList.querySelectorAll('.custom-rule-item');
+            items.forEach(item => {
+                const fromInput = item.querySelector('input[id^="rule-from-"]');
+                const toInput = item.querySelector('input[id^="rule-to-"]');
+                if (fromInput && toInput && fromInput.value !== '') {
+                    rules.push({ from: fromInput.value, to: toInput.value });
+                }
+            });
+            return rules;
+        }
+
+        function escapeRegExp(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function getBasename(path) {
+            // Returns the last non-empty path segment (works for both file and folder paths)
+            const segments = path.split('/').filter(Boolean);
+            return segments.length > 0 ? segments[segments.length - 1] : '';
+        }
+
+        function applyCustomRules(text, customRules) {
+            if (!customRules || customRules.length === 0) return text;
+            let result = text;
+            customRules.forEach(rule => {
+                if (!rule.from) return;
+                const regex = new RegExp(escapeRegExp(rule.from), 'gi');
+                result = result.replace(regex, rule.to);
+            });
+            return result;
+        }
+
+        addRuleBtn.addEventListener('click', () => addCustomRule());
+
+        // Add one empty rule row by default
+        addCustomRule();
+
+
         function removeAccents(str) {
             if (!removeAccentsOption.checked) return str;
             return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         }
 
         // Clean a filename
-        function cleanFilename(filename) {
+        function cleanFilename(filename, customRules) {
             // Split into path and name
             const parts = filename.split('/');
             const cleanedParts = parts.map((part, index) => {
@@ -540,6 +700,9 @@
                 const isFile = index === parts.length - 1 && part.includes('.');
                 
                 let cleaned = part;
+
+                // Apply custom find & replace rules first - these override/precede general rules
+                cleaned = applyCustomRules(cleaned, customRules);
 
                 // Remove accents
                 cleaned = removeAccents(cleaned);
@@ -613,6 +776,7 @@
         async function cleanSingleZip(file) {
             updateProgress(0, 'Loading ZIP file...');
 
+            const customRules = getCustomRules();
             const zip = await JSZip.loadAsync(file);
             const newZip = new JSZip();
             
@@ -625,7 +789,7 @@
 
             for (const filename of fileNames) {
                 const fileData = zip.files[filename];
-                let cleanedName = cleanFilename(filename);
+                let cleanedName = cleanFilename(filename, customRules);
 
                 // Handle duplicates
                 if (usedNames.has(cleanedName) && !fileData.dir) {
@@ -652,10 +816,17 @@
 
                 usedNames.add(cleanedName);
 
-                // Track changes
+                // Track changes - but skip files whose own name is unchanged
+                // (i.e. only an ancestor folder was renamed, which is already logged separately)
                 if (filename !== cleanedName) {
-                    renamedFilesList.push({ old: filename, new: cleanedName });
-                    stats.renamed++;
+                    const oldBasename = getBasename(filename);
+                    const newBasename = getBasename(cleanedName);
+                    if (fileData.dir || oldBasename !== newBasename) {
+                        renamedFilesList.push({ old: filename, new: cleanedName });
+                        stats.renamed++;
+                    } else {
+                        stats.unchanged++;
+                    }
                 } else {
                     stats.unchanged++;
                 }
@@ -675,15 +846,15 @@
             updateProgress(100, 'Generating cleaned ZIP...');
             cleanedZip = await newZip.generateAsync({ type: 'blob' });
             
-            // Clean the ZIP filename itself
-            cleanedFileName = cleanFilename(file.name);
-            if (!cleanedFileName.endsWith('.zip')) {
-                cleanedFileName += '.zip';
-            }
+            // Clean the ZIP filename itself and add _clean suffix
+            originalZipName = file.name;
+            const cleanedBaseName = cleanFilename(file.name.replace(/\.zip$/i, ''), customRules);
+            cleanedFileName = cleanedBaseName + '_clean.zip';
         }
 
         // Clean multiple ZIP files
         async function cleanMultipleZips(files) {
+            const customRules = getCustomRules();
             const combinedZip = new JSZip();
             renamedFilesList = [];
             stats = { renamed: 0, unchanged: 0, duplicates: 0 };
@@ -694,7 +865,7 @@
                 updateProgress((i / files.length) * 50, `Processing ${file.name}...`);
 
                 const zip = await JSZip.loadAsync(file);
-                let folderName = cleanFilename(file.name.replace('.zip', ''));
+                let folderName = cleanFilename(file.name.replace('.zip', ''), customRules);
 
                 // Ensure unique folder name
                 let finalFolderName = folderName;
@@ -708,7 +879,7 @@
                 if (preserveStructureOption.checked) {
                     for (const filename of Object.keys(zip.files)) {
                         const fileData = zip.files[filename];
-                        let cleanedName = cleanFilename(filename);
+                        let cleanedName = cleanFilename(filename, customRules);
                         const newPath = `${finalFolderName}/${cleanedName}`;
 
                         // Handle duplicates within this scope
@@ -731,8 +902,14 @@
 
                         const originalPath = `${file.name}/${filename}`;
                         if (originalPath !== finalPath) {
-                            renamedFilesList.push({ old: originalPath, new: finalPath });
-                            stats.renamed++;
+                            const oldBasename = getBasename(originalPath);
+                            const newBasename = getBasename(finalPath);
+                            if (fileData.dir || oldBasename !== newBasename) {
+                                renamedFilesList.push({ old: originalPath, new: finalPath });
+                                stats.renamed++;
+                            } else {
+                                stats.unchanged++;
+                            }
                         } else {
                             stats.unchanged++;
                         }
@@ -749,7 +926,8 @@
 
             updateProgress(75, 'Generating combined ZIP...');
             cleanedZip = await combinedZip.generateAsync({ type: 'blob' });
-            cleanedFileName = 'cleaned_archives.zip';
+            originalZipName = 'archives';
+            cleanedFileName = 'archives_clean.zip';
             updateProgress(100, 'Complete!');
         }
 
@@ -797,11 +975,45 @@
             URL.revokeObjectURL(url);
         });
 
+        // Download log button
+        downloadLogBtn.addEventListener('click', () => {
+            const now = new Date().toISOString();
+            let log = `AlmaDL Filename Cleaner - Log delle modifiche\n`;
+            log += `Generato il: ${now}\n`;
+            log += `Archivio originale: ${originalZipName}\n`;
+            log += `Archivio pulito: ${cleanedFileName}\n`;
+            log += `${'='.repeat(60)}\n\n`;
+            log += `Riepilogo:\n`;
+            log += `  File rinominati: ${stats.renamed}\n`;
+            log += `  File non modificati: ${stats.unchanged}\n`;
+            log += `  Duplicati disambiguati: ${stats.duplicates}\n\n`;
+            log += `${'='.repeat(60)}\n`;
+            log += `Dettaglio modifiche:\n\n`;
+
+            if (renamedFilesList.length === 0) {
+                log += `Nessun file è stato rinominato.\n`;
+            } else {
+                renamedFilesList.forEach((item, index) => {
+                    log += `${index + 1}. ${item.old}\n   -> ${item.new}\n\n`;
+                });
+            }
+
+            const blob = new Blob([log], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const logFileName = (cleanedFileName || 'cleaned_archive').replace(/\.zip$/i, '') + '_log.txt';
+            a.download = logFileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
         // Reset button
         resetBtn.addEventListener('click', () => {
             selectedFiles = [];
             cleanedZip = null;
             cleanedFileName = '';
+            originalZipName = '';
             renamedFilesList = [];
             fileInput.value = '';
             fileInfo.style.display = 'none';
