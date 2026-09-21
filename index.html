@@ -102,6 +102,11 @@
             --gradient-end: #764ba2;
         }
 
+        .tool-card.manifest-generator {
+            --gradient-start: #43e97b;
+            --gradient-end: #38f9d7;
+        }
+
         .tool-icon {
             font-size: 4em;
             margin-bottom: 20px;
@@ -308,6 +313,19 @@
                     <li>Genera il README file in formato .docx e .pdf</li>
                 </ul>
                 <span class="tool-button">Apri AlmaDL README Generator →</span>
+            </a>
+
+        <a href="generate-sha256-manifest" class="tool-card manifest-generator">
+                <span class="tool-icon">🔐</span>
+                <h2 class="tool-title">AlmaDL SHA256 manifest generator</h2>
+                <p class="tool-description">Genera un manifest con gli hash SHA256 per ogni file</p>
+                <ul class="tool-features">
+                    <li>Carica il file ZIP del dataset</li>
+                    <li>Genera gli hash SHA256 per ogni file</li>
+                    <li>Inserisce il manifest nel file ZIP</li>
+                    <li>Scarica il nuovo ZIP con il manifest</li>
+                </ul>
+                <span class="tool-button">Apri AlmaDL SHA256 manifest generator →</span>
             </a>
         </div>
 
