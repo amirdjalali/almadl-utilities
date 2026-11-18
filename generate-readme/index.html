@@ -440,47 +440,13 @@
 <body>
     <div class="container">
         <h1>📝 README Generator</h1>
-        <p class="subtitle">Create dataset documentation from JSON metadata</p>
-
-        <!-- EPrint ID Fetch Section -->
-        <div class="section-card" style="margin-bottom: 20px;">
-            <h3>🔍 Download Metadata by EPrint ID</h3>
-            <p class="help-text">Enter the EPrint ID to get the download link for your metadata file</p>
-            <div style="display: flex; gap: 10px; align-items: flex-end;">
-                <div style="flex: 1;">
-                    <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">EPrint ID</label>
-                    <input type="number" id="eprintIdInput" placeholder="e.g., 8622" 
-                           style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em;">
-                </div>
-            </div>
-            <div style="margin-top: 15px; padding: 15px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #667eea;">
-                <div style="font-size: 0.9em; color: #555; margin-bottom: 10px;">
-                    <strong>Direct Download URL:</strong><br>
-                    <code style="background: white; padding: 5px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; font-size: 0.85em;">
-                        https://amsacta.unibo.it/cgi/export/eprint/<span id="eprintIdDisplay">XXXX</span>/JSON/amsacta-eprint-<span id="eprintIdDisplay2">XXXX</span>.js
-                    </code>
-                </div>
-                <a id="directDownloadLink" href="#" target="_blank" 
-                   style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                          color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.95em;"
-                   onclick="return eprintIdInput.value ? true : (alert('Please enter an EPrint ID first'), false);">
-                    📥 Open Download Link in New Tab
-                </a>
-                <div style="margin-top: 10px; font-size: 0.85em; color: #666;">
-                    Click the link above, then save the file and upload it below
-                </div>
-            </div>
-        </div>
-
-        <div style="text-align: center; margin: 20px 0; color: #999; font-weight: 600;">
-            — OR —
-        </div>
+        <p class="subtitle">Create dataset documentation from DataCite XML metadata</p>
 
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">📄</div>
-            <div class="upload-text">Carica il file dei metadati JSON</div>
-            <div class="upload-subtext">Clicca per selezionare il file o trascina qui il tuo file .json o .js</div>
-            <input type="file" id="jsonInput" accept=".json, .js">
+            <div class="upload-text">Carica il file dei metadati DataCite XML</div>
+            <div class="upload-subtext">Clicca per selezionare il file o trascina qui il tuo file .xml</div>
+            <input type="file" id="xmlInput" accept=".xml">
         </div>
 
         <div class="metadata-preview" id="metadataPreview">
@@ -626,28 +592,11 @@
         let variableCount = 0;
         let uploadedFiles = [];
 
-        // EPrint ID display update
-        const eprintIdInput = document.getElementById('eprintIdInput');
-        eprintIdInput.addEventListener('input', (e) => {
-            const id = e.target.value;
-            document.getElementById('eprintIdDisplay').textContent = id || 'XXXX';
-            document.getElementById('eprintIdDisplay2').textContent = id || 'XXXX';
-            
-            // Update direct download link
-            const directLink = document.getElementById('directDownloadLink');
-            if (id) {
-                const url = `https://amsacta.unibo.it/cgi/export/eprint/${id}/JSON/amsacta-eprint-${id}.js`;
-                directLink.href = url;
-            } else {
-                directLink.href = '#';
-            }
-        });
-
-        // JSON Upload handling
+        // XML Upload handling
         const uploadArea = document.getElementById('uploadArea');
-        const jsonInput = document.getElementById('jsonInput');
+        const xmlInput = document.getElementById('xmlInput');
 
-        uploadArea.addEventListener('click', (e) => jsonInput.click());
+        uploadArea.addEventListener('click', (e) => xmlInput.click());
 
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -666,13 +615,13 @@
             uploadArea.classList.remove('dragover');
             const files = e.dataTransfer.files;
             if (files.length > 0) {
-                handleJsonFile(files[0]);
+                handleXmlFile(files[0]);
             }
         });
 
-        jsonInput.addEventListener('change', (e) => {
+        xmlInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
-                handleJsonFile(e.target.files[0]);
+                handleXmlFile(e.target.files[0]);
             }
         });
 
@@ -706,20 +655,177 @@
             handleDataFiles(files);
         });
 
-        async function handleJsonFile(file) {
-            if (!file.name.endsWith('.json') && !file.name.endsWith('.js')) {
-                showError('Please upload a JSON file');
+        // ---------- DataCite XML parsing ----------
+        function escapeHtml(str) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+            return String(str).replace(/[&<>"']/g, ch => map[ch]);
+        }
+
+        // Namespace-agnostic helpers (work with kernel-3 / kernel-4 and prefixed elements)
+        function xmlChildren(parent, name) {
+            if (!parent) return [];
+            return Array.from(parent.children).filter(c => c.localName === name);
+        }
+
+        function xmlChild(parent, name) {
+            return xmlChildren(parent, name)[0] || null;
+        }
+
+        function xmlText(el) {
+            return el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+        }
+
+        // Text of an element: explicit <br/> become line breaks, any other whitespace is collapsed
+        function xmlRichText(el) {
+            if (!el) return '';
+            const collect = (node) => {
+                let out = '';
+                node.childNodes.forEach(child => {
+                    if (child.nodeType === 3 || child.nodeType === 4) {
+                        out += child.nodeValue.replace(/\s+/g, ' ');
+                    } else if (child.nodeType === 1) {
+                        out += child.localName === 'br' ? '\n' : collect(child);
+                    }
+                });
+                return out;
+            };
+            return collect(el).split('\n').map(l => l.trim()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+        }
+
+        // Parses a <creator> or <contributor> element (kind = 'creator' | 'contributor')
+        function parseDataCitePerson(el, kind) {
+            const nameEl = xmlChild(el, kind + 'Name');
+            const fullName = xmlText(nameEl);
+            const isOrganization = !!nameEl && nameEl.getAttribute('nameType') === 'Organizational';
+            let given = xmlText(xmlChild(el, 'givenName'));
+            let family = xmlText(xmlChild(el, 'familyName'));
+
+            if (!given && !family && fullName) {
+                const comma = fullName.indexOf(',');
+                if (!isOrganization && comma > -1) {
+                    family = fullName.slice(0, comma).trim();      // "Family, Given"
+                    given = fullName.slice(comma + 1).trim();
+                } else {
+                    family = fullName;                             // organisations / single-string names kept as-is
+                }
+            }
+
+            const orcidEl = xmlChildren(el, 'nameIdentifier')
+                .find(id => (id.getAttribute('nameIdentifierScheme') || '').toUpperCase() === 'ORCID');
+            const orcid = orcidEl ? xmlText(orcidEl).replace(/^https?:\/\/orcid\.org\//i, '') : '';
+
+            const affiliation = xmlChildren(el, 'affiliation').map(xmlText).filter(Boolean).join('; ');
+
+            return { name: { given, family }, orcid, affiliation };
+        }
+
+        // Converts a DataCite XML string into the metadata object used by the rest of the app
+        function parseDataCiteXml(xmlString) {
+            const doc = new DOMParser().parseFromString(xmlString, 'application/xml');
+            if (doc.getElementsByTagName('parsererror').length > 0) {
+                throw new Error('the file is not well-formed XML');
+            }
+
+            const resource = Array.from(doc.getElementsByTagNameNS('*', 'resource'))[0];
+            if (!resource) {
+                throw new Error('no DataCite <resource> element found - is this a DataCite XML file?');
+            }
+
+            // titles (main title + optional subtitle)
+            const titleEls = xmlChildren(xmlChild(resource, 'titles'), 'title');
+            const mainTitleEl = titleEls.find(t => !t.getAttribute('titleType'))
+                || titleEls.find(t => t.getAttribute('titleType') !== 'Subtitle');
+            const subtitleEl = titleEls.find(t => t.getAttribute('titleType') === 'Subtitle');
+            let title = xmlText(mainTitleEl);
+            if (title && subtitleEl) {
+                title += (/[.:?!]$/.test(title) ? ' ' : ': ') + xmlText(subtitleEl);
+            }
+
+            // creators / contributors
+            const creators = xmlChildren(xmlChild(resource, 'creators'), 'creator')
+                .map(c => parseDataCitePerson(c, 'creator'));
+            const contributors = xmlChildren(xmlChild(resource, 'contributors'), 'contributor')
+                .map(c => ({ ...parseDataCitePerson(c, 'contributor'), type: c.getAttribute('contributorType') || '' }));
+
+            // descriptions, grouped by descriptionType
+            const descriptions = xmlChildren(xmlChild(resource, 'descriptions'), 'description')
+                .map(d => ({ type: d.getAttribute('descriptionType') || 'Other', text: xmlRichText(d) }))
+                .filter(d => d.text);
+            const joinType = (type) => descriptions.filter(d => d.type === type).map(d => d.text).join('\n\n');
+            const otherNotes = descriptions
+                .filter(d => !['Abstract', 'Methods', 'TechnicalInfo'].includes(d.type))
+                .map(d => d.type === 'Other' ? d.text : `${d.type}: ${d.text}`)
+                .join('\n\n');
+
+            // fundingReferences
+            const fundingReferences = xmlChildren(xmlChild(resource, 'fundingReferences'), 'fundingReference')
+                .map(fr => ({
+                    funder: xmlText(xmlChild(fr, 'funderName')),
+                    awardNumber: xmlText(xmlChild(fr, 'awardNumber')),
+                    awardTitle: xmlText(xmlChild(fr, 'awardTitle'))
+                }))
+                .filter(fr => fr.funder || fr.awardNumber || fr.awardTitle);
+
+            return {
+                title,
+                creators,
+                contributors,
+                abstract: joinType('Abstract'),
+                methods: joinType('Methods'),
+                technicalInfo: joinType('TechnicalInfo'),
+                otherNotes,
+                date: xmlText(xmlChild(resource, 'publicationYear')),
+                fundingReferences
+            };
+        }
+
+        // Pre-fills form fields from the non-abstract descriptions,
+        // never overwriting text the user has typed or edited
+        const autoFilled = {};
+        function setIfUntouched(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.value === '' || el.value === autoFilled[id]) {
+                el.value = value || '';
+                autoFilled[id] = value || '';
+            }
+        }
+
+        function prefillFromDescriptions() {
+            setIfUntouched('methodology', metadata.methods);
+            setIfUntouched('fileSpecs', metadata.technicalInfo);
+            setIfUntouched('notes', metadata.otherNotes);
+        }
+
+        function formatFundingReference(fr) {
+            const parts = [];
+            if (fr.awardTitle) parts.push(fr.awardTitle);
+            if (fr.awardNumber) parts.push(`Project ID: ${fr.awardNumber}`);
+            if (fr.funder) parts.push(`Funded by: ${fr.funder}`);
+            return parts.join(', ');
+        }
+
+        // Word shows a raw "\n" inside a run as a space, so multi-line text needs real line breaks
+        function multiLineRuns(text) {
+            const { TextRun } = docx;
+            return String(text).split('\n').map((line, i) => new TextRun({ text: line, break: i > 0 ? 1 : 0 }));
+        }
+
+        async function handleXmlFile(file) {
+            if (!file.name.toLowerCase().endsWith('.xml')) {
+                showError('Please upload a DataCite XML file (.xml)');
                 return;
             }
 
             try {
                 const text = await file.text();
-                metadata = JSON.parse(text);
+                metadata = parseDataCiteXml(text);
                 displayMetadata();
+                prefillFromDescriptions();
                 document.getElementById('formSection').style.display = 'block';
                 hideError();
             } catch (error) {
-                showError('Error reading JSON file: ' + error.message);
+                showError('Error reading XML file: ' + error.message);
             }
         }
 
@@ -817,14 +923,20 @@
             const preview = document.getElementById('metadataPreview');
             
             let html = '';
-            if (metadata.title) html += `<p><strong>Title:</strong> ${metadata.title}</p>`;
-            if (metadata.projectname) html += `<p><strong>Project:</strong> ${metadata.projectname}</p>`;
-            if (metadata.projectacronym) html += `<p><strong>Acronym:</strong> ${metadata.projectacronym}</p>`;
-            if (metadata.creators && metadata.creators.length > 0) {
-                const creator = metadata.creators[0];
-                html += `<p><strong>Creator:</strong> ${creator.name.given} ${creator.name.family}</p>`;
+            if (metadata.title) html += `<p><strong>Title:</strong> ${escapeHtml(metadata.title)}</p>`;
+            if (metadata.creators.length > 0) {
+                html += `<p><strong>Creators:</strong> ${escapeHtml(metadata.creators.map(formatPersonName).join('; '))}</p>`;
             }
-            if (metadata.date) html += `<p><strong>Date:</strong> ${metadata.date}</p>`;
+            if (metadata.contributors.length > 0) {
+                const list = metadata.contributors
+                    .map(c => c.type ? `${formatPersonName(c)} (${c.type})` : formatPersonName(c))
+                    .join('; ');
+                html += `<p><strong>Contributors:</strong> ${escapeHtml(list)}</p>`;
+            }
+            if (metadata.date) html += `<p><strong>Publication year:</strong> ${escapeHtml(metadata.date)}</p>`;
+            if (metadata.fundingReferences.length > 0) {
+                html += `<p><strong>Funding:</strong> ${escapeHtml(metadata.fundingReferences.map(formatFundingReference).join(' | '))}</p>`;
+            }
             
             info.innerHTML = html;
             preview.style.display = 'block';
@@ -865,8 +977,8 @@
         }
 
         function formatPersonName(person) {
-            const name = person.name;
-            return `${name.given} ${name.family}`;
+            const name = person.name || {};
+            return [name.given, name.family].filter(Boolean).join(' ');
         }
 
         function formatPerson(person) {
@@ -1058,21 +1170,17 @@
 
             content.push(new Paragraph({ children: [new TextRun("")] }));
 
-            // Project Info
-            if (metadata.projectname || metadata.projectacronym) {
+            // Project Info (from DataCite fundingReferences)
+            if (metadata.fundingReferences && metadata.fundingReferences.length > 0) {
                 content.push(new Paragraph({
                     children: [new TextRun({ text: "Project Info:", bold: true })]
                 }));
 
-                let projectInfo = '';
-                if (metadata.projectacronym) projectInfo += metadata.projectacronym + ', ';
-                if (metadata.projectname) projectInfo += metadata.projectname + ', ';
-                if (metadata.projectid) projectInfo += `Project ID: ${metadata.projectid}, `;
-                if (metadata.funder) projectInfo += `Funded by: ${metadata.funder}`;
-
-                content.push(new Paragraph({
-                    children: [new TextRun(projectInfo)]
-                }));
+                metadata.fundingReferences.forEach(fr => {
+                    content.push(new Paragraph({
+                        children: [new TextRun(formatFundingReference(fr))]
+                    }));
+                });
 
                 content.push(new Paragraph({ children: [new TextRun("")] }));
             }
@@ -1115,7 +1223,7 @@
             const datasetContents = document.getElementById('datasetContents').value;
             if (datasetContents) {
                 content.push(new Paragraph({
-                    children: [new TextRun(datasetContents)]
+                    children: multiLineRuns(datasetContents)
                 }));
             }
 
@@ -1128,7 +1236,7 @@
             }));
 
             content.push(new Paragraph({
-                children: [new TextRun(metadata.abstract || "[Abstract not provided]")]
+                children: multiLineRuns(metadata.abstract || "[Abstract not provided]")
             }));
 
             content.push(new Paragraph({ children: [new TextRun("")] }));
@@ -1208,7 +1316,7 @@
 
                 if (fileSpecs) {
                     content.push(new Paragraph({
-                        children: [new TextRun(fileSpecs)]
+                        children: multiLineRuns(fileSpecs)
                     }));
                 }
 
@@ -1224,7 +1332,7 @@
                 }));
 
                 content.push(new Paragraph({
-                    children: [new TextRun(dataSources)]
+                    children: multiLineRuns(dataSources)
                 }));
 
                 content.push(new Paragraph({ children: [new TextRun("")] }));
@@ -1239,7 +1347,7 @@
                 }));
 
                 content.push(new Paragraph({
-                    children: [new TextRun(methodology)]
+                    children: multiLineRuns(methodology)
                 }));
 
                 content.push(new Paragraph({ children: [new TextRun("")] }));
@@ -1285,7 +1393,7 @@
                 }));
 
                 content.push(new Paragraph({
-                    children: [new TextRun(notes)]
+                    children: multiLineRuns(notes)
                 }));
             }
 
@@ -1350,15 +1458,13 @@
             const year = metadata.date ? String(metadata.date).split('-')[0] : new Date().getFullYear();
             content += "Publication Year: " + year + "\n\n";
 
-            // Project Info
-            if (metadata.projectname || metadata.projectacronym) {
+            // Project Info (from DataCite fundingReferences)
+            if (metadata.fundingReferences && metadata.fundingReferences.length > 0) {
                 content += "Project Info:\n";
-                let projectInfo = '';
-                if (metadata.projectacronym) projectInfo += metadata.projectacronym + ', ';
-                if (metadata.projectname) projectInfo += metadata.projectname + ', ';
-                if (metadata.projectid) projectInfo += `Project ID: ${metadata.projectid}, `;
-                if (metadata.funder) projectInfo += `Funded by: ${metadata.funder}`;
-                content += projectInfo + "\n\n";
+                metadata.fundingReferences.forEach(fr => {
+                    content += formatFundingReference(fr) + "\n";
+                });
+                content += "\n";
             }
 
             // Dataset Contents Section
@@ -1565,7 +1671,7 @@
                 uploadedFiles = [];
                 document.getElementById('metadataPreview').style.display = 'none';
                 document.getElementById('formSection').style.display = 'none';
-                document.getElementById('jsonInput').value = '';
+                document.getElementById('xmlInput').value = '';
                 document.getElementById('filesInput').value = '';
                 document.getElementById('filesList').innerHTML = '';
                 
